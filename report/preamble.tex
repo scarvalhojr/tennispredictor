@@ -1,0 +1,39 @@
+\documentclass[a4paper]{article}%
+\usepackage{geometry}
+\geometry{a4paper, left=20mm, right=20mm, top=20mm, bottom=20mm}
+\usepackage{helvet}
+\usepackage[fleqn]{amsmath}
+\setlength{\mathindent}{0pt}
+\usepackage{braket}
+\usepackage[shortlabels]{enumitem}
+\usepackage{relsize}
+\usepackage{exscale}
+\usepackage{xcolor}
+\definecolor{tudcol}{HTML}{014c6d}
+\usepackage{eurosym}
+\usepackage{lastpage}
+\usepackage{array}
+\usepackage{calc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+
+% bibliography file using harvard
+\usepackage[style=authoryear-ibid,backend=biber]{biblatex}
+\bibliography{bibliography.bib} % with extension
+
+\renewcommand{\familydefault}{\sfdefault}
+
+\AtBeginDocument{%
+  \setlength\parindent{0pt}
+  \setlength\parskip{1ex}
+}
+
+\usepackage{titlesec}
+\titleformat*{\section}{\normalfont\LARGE\bfseries\color{tudcol}}
+
+\newcommand*\srctxt[1]{
+  {\fontsize{12}{0}\selectfont \cite{Source: [#1]}}
+}
+\linespread{1.5}
+

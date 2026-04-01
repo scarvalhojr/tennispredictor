@@ -1,0 +1,213 @@
+\input{preamble.tex}
+
+\begin{document}
+
+\thispagestyle{empty}
+\setlength\headheight{0pt}
+\begin{center}
+\includegraphics[width=0.5\linewidth]{images/TUD_Logo.png}
+
+{\large \color{tudcol}{\textsc{School of Computer Science}} \par}
+
+\vspace{3cm}
+
+{\Large \textsc{Applied Machine Learning Project} \par}
+
+
+{\LARGE\bfseries \textsc{[Title of Project]} \par}
+
+\vspace{7cm}
+\end{center}
+
+{\large
+\begin{tabular}{l@{\hspace{2em}}l}
+Author: & [Joe Bloggs, C00123456] \\
+Date: & [01/01/1900]
+\end{tabular}
+}
+
+
+
+\clearpage
+\restoregeometry
+
+
+\section*{Declaration}
+I hereby declare that the work described in this report is, except where otherwise stated, entirely my own and that I have not submitted it before for summative assessment in third-level education. I have read and understand TU Dublin’s policy on plagiarism.
+
+
+Signed .......[\raisebox{-2ex}{\includegraphics[width=0.2\linewidth]{sig.png}}].......
+\hspace{3em}Date .......[01/01/1900].......
+
+(Student)
+
+\pagebreak
+
+\section*{Acknowledgements}
+[Please leave this section out if you do not have any acknowledgements.]
+\pagebreak
+
+
+\section*{Abstract}
+[This should be up to 200 words and provide a summary of what was done and important findings.]
+\pagebreak
+
+\tableofcontents
+
+
+\vspace{5em}
+[The report structure should include the given headings, except for appendices, which are optional. You may add any further subsections required to structure your particular content.
+
+Lists of tables and figures are not required, however, any tables or figures included in the report must have captions and each must be referred to at least once in the text.]
+
+
+\pagebreak
+
+\section*{Acronyms and Abbreviations}
+\begin{tabular}{@{}l@{\hspace{2em}}l}
+[ \\
+\textbf{ABCD} & Arts and Business Centre Drumcondra \\
+\textbf{EFGH} & Enterics For Global Health \\
+]
+\end{tabular}
+\pagebreak
+
+%=========================================================================
+\section{Introduction}
+
+[High-level background information leading into the project description.]
+
+\subsection{Project description}
+[A high-level description of what the project involves, the motivation behind it and its aims. This should conclude with a clearly and minimally stated research question.]
+
+\subsection{Project motivation and justification}
+[Explain the motivation for doing this project and also why it makes sense to do it.]
+
+\subsection{Project scope}
+[Carve out the project scope, in terms of breadth and depth to which the research question will be investigated, with reference to data and algorithms where needed for clear specification. Clarity might also be derived from stating what the project is not about.]
+
+\subsection{Report layout}
+[A sentence on each of the following sections, introducing the reader to the report.]
+
+\pagebreak
+
+
+
+
+%=========================================================================
+\section{Literature review}
+
+[You may structure this as you wish. However, the main purpose of this section is to provide the reader with good insight into the knowledge and research landscape surrounding your project. This does not mean that you will have to undertake a detailed sweep of everything ever done that might relate in any way to the project - this would be impossible anyway! What it means is that you will have to make a selection of important and representative work, all obtained from reliable sources, cited within the text and listed in the references section of the document, that to the best of your knowledge paints a landscape true to reality.
+
+As this is an applied project, the literature review should include both information on the domain of application and on technologies that will be employed. For example, for a project on the prediction of startup company success with the use of machine learning (ML) models, the domain review would focus on startup company success, how it is measured, whether it was predicted before, how it was predicted (ML, other methods, or both?) and how successfully. The technology section of the review would focus on the machine learning models employed, their success in tackling similar problems and their suitability, in technical terms, for the particular problem at hand.
+
+The literature review must give a cohesive and coherent account of the application and methodological domains and must be fully backed up by reliable sources (meaning that any information in it must be accompanied by a citation, unless it is common knowledge or follows logically from the content).
+
+The literature review should start from the more general and focus in on the more specific as it develops, ending in a subsection that identifies gaps in knowledge from which the need for your project arises, but without mentioning the project itself: for example, a need (1) to try a new or slightly modified method on an old problem, (2) to apply an established method to new data (e.g. Irish instead of UK data) or (3) to confirm some previously obtained results.
+
+Detailed descriptions of methods or other information that is commonly known in the field of machine learning and AI, should not be included in the literature review (or elsewhere in the report). More obscure or newer methods may be described. A good rule of thumb is: if you have learnt it in one of your modules, then it should not be written-up as part of the report.
+
+Include at least 8 references. These must be reliable sources i.e. peer reviewed literature or books. If there is not a lot of peer-reviewed work on your topic (which may be the case if what you are doing is very new and relies on new technologies), you may use ‘gray literature’ but this must be properly justified in the text of this section.
+
+Citations should be in author-year style. For example, you might say that \textcite{Sedgwick2012} did something spectacular and that it was widely reported \parencite{Myatt2007}.]
+
+\pagebreak
+
+
+
+%=========================================================================
+\section{Methodology}
+[You may structure this as you wish, to suit your particular project. Include information on the stages of the project and details of how each stage was carried out. In addition, explain and justify (either from common knowledge in the field, with reference to sources or through logical deduction) the choice of approach at all levels. A good rule of thumb for checking whether the argumentation in this (or any other) section is ‘watertight’ is to ask yourself if there is anything in the text that the reader could reasonably ask ‘why’ or ‘how can you be sure?’ about without getting an answer in the text itself – if there is, then you have more writing to do.
+
+Examples of project stages are data collection and preparation, modelling, model selection and tuning, model evaluation and data interpretation (this is not an exhaustive list). However, do not include each and every type of task only because you learnt about in the course. Many will not be applicable in your project (e.g. data cleaning, scaling or PCA will not always be needed). If you are ‘skipping’ a common task such as data cleaning, just explain why, as this one of the decisions you made with regard to the methodology.
+
+Discuss the implications of the methodology in the application domain.
+
+Information on tools (e.g. Colab, Python libraries etc.) should be presented in a subsection of this chapter and not ‘woven’ through the conceptual account of the methodology.]
+
+\pagebreak
+
+
+
+
+\pagebreak
+
+
+\section{Results}
+[You may structure this as you wish, but let the reader know everything you know about the results, regardless of whether you consider the outcome good or bad.
+
+Discuss the results, rather than simply presenting them to your reader and letting them do the work.
+
+Be inquisitive when analysing your results. For example, if you are getting accuracies in the high 90s there is probably either an extreme imbalance in the data set or a data leak. Always investigate and at least discuss but, if there is time, it is best to redesign and redo your experiments.
+
+Discuss the implication of the results in the application domain]
+
+\pagebreak
+
+
+\section{Conclusion}
+[Structure as you wish but make sure that a it includes a synthesis of the results, a high-level discussion of their implications in the application domain, any particularly interesting low-level details of the results and, finally, some words on future work i.e. how you or someone else might build on the project.]
+\pagebreak
+
+
+%prints bibliography from bibliography file.
+\printbibliography[heading=bibintoc]
+
+[The two references above are examples. Remove them in your document.
+
+Make sure that these are in an author-year style (e.g. APA6 or Harvard). At least 8 references are required, but more is better.
+
+All references that are listed here must be cited in the text and any references cited in the text must be listed here.]
+
+
+\pagebreak
+
+
+\appendix
+\section{Examples of figure, table and equation}
+[Use appendices for any material that would interrupt the flow of the report but is relevant or would be interesting to the reader. Remove this section if you do not have any appendices.
+
+Here are examples of a figure, table and equation in LaTeX.
+
+\subsection*{Figure example}
+Example of figure:
+
+\begin{figure}[ht!]
+ 	\centering
+ 	\caption{Visualisation of a negative correlation (\cite{Myatt2007})}\vspace{1em}
+ 	\includegraphics[width=0.4\linewidth]{neg_rel_vis.png}
+ 	\label{fig:negcorr}
+ \end{figure}
+
+And here is an example of a reference to Figure \ref{fig:negcorr}.
+
+
+
+\subsection*{Table example}
+Example of table:
+
+\begin{table}[ht!]
+\centering
+	\caption{Correlation values for N=100 and $\alpha = .05$}\vspace{1em}
+	\begin{tabular}{lcc}
+		\textbf{Pair} & \textbf{r} & \textbf{Significant} \\ \hline
+		First  & 0.22 & Yes \\ \hline
+		Second  & 0.07 & No \\ \hline
+		Third  & 0.31 & Yes \\ \hline
+	\end{tabular}
+	\label{tab:correlations}
+\end{table}
+
+An example of referencing Table \ref{tab:correlations}.
+
+\subsection*{Equation example}
+
+\begin{equation}
+  r = \dfrac{\displaystyle\sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})}{(n-1)S_xS_y} = \dfrac{S^2_{xy}}{S_xS_y}
+  \label{eq:correlation}
+\end{equation}
+
+  where $x$, $y$ are the two variables, $x_i$, $y_i$ the i\textsuperscript{th} values, $\bar{x}$, $\bar{y}$ the means, $S_x$ and $S_y$ the sample standard deviations and $S^2_{xy}$ the sample covariance. And here is a reference to Equation \ref{eq:correlation}.]
+
+
+\end{document}
