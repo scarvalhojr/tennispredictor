@@ -38,8 +38,8 @@ summative assessment in third-level education. I have read and understand
 TU Dublin’s policy on plagiarism.
 
 
-Signed .......[\raisebox{-2ex}{\includegraphics[width=0.2\linewidth]{sig.png}}].......
-\hspace{3em}Date .......[31/05/2026].......
+Signed .......\raisebox{-2ex}{\includegraphics[width=0.2\linewidth]{sig.png}}.......
+\hspace{3em}Date ...... 31/05/2026 ......
 
 (Sergio de Carvalho, D24130831)
 
@@ -115,7 +115,7 @@ literature while also discovering new ways to improve the predictions of these m
 
 Predicting the outcomes of sporting events has been a long-standing problem in the field of sports
 analytics, and can have significant implications for the development of training methods and
-strategies to improve the performance of professional athletes \parencite{almarashi_2024}. It
+strategies to improve the performance of professional athletes. It
 is also important for broadcasters and the media in general as it helps them to transform a passive
 viewing experience into an interactive, high-stakes narrative that drives viewer retention and fan
 engagement. Finally, it can be argued that predicting sporting events can help develop valuable
@@ -129,12 +129,13 @@ This project is focused on predicting the results of professional tennis matches
 organised by the Asssociation of Tennis Professionals (ATP), the men's tennis circuit. While there
 is a wealth of data available from the Women's Tennis Association (WTA) as well, limiting the scope
 to one of the two circuits allows for a more focused and comprehensive analysis in the limited time
-available for this project.
+available for this project. We note that the focus of this project is modelling predictions based
+solely on pre-match data rather than using data collected while the match is in progress.
 
-We note that there has been a significant interest in the literature in using betting odds to either
-improve the predictions or measure their accuracy. While odds carefully curated and published by
+Finally, we note that there is significant interest in the literature in using betting odds to
+either improve predictions or compare their accuracy. While odds carefully curated and published by
 professional bookmakers can be a valuable tool of information, this project does not use odds data
-nor focuses on this aspect.
+nor does it focus on this aspect of the problem.
 
 
 \subsection{Report layout}
@@ -148,38 +149,132 @@ nor focuses on this aspect.
 
 \section{Literature review}
 
-Citations should be in author-year style. For example, you might say that \textcite{buhamra_2025-1} did something spectacular and that it was widely reported \parencite{buhamra_2025-2}.]
+The Association of Tennis Professionals (ATP) manages the men's circuit and maintains the official
+player ranking that is used to determine tournament eligibility, entry qualification, and player
+seeding. This ranking is based on a cumulative rolling points system. Players earn points for each
+match won in an official tournament, and points remain on a player's record for 52 weeks before
+expiring. The number of points awarded for each win is determined by the event category and the
+round the match is played on \parencite{williams_2021}. For instance, the champion of one of the
+four annual Grand Slam events (Australian Open, Roland Garros, Wimbledon, and the US Open) receive
+2,000 points, whereas the winner of a first round match on the same tournament that does not advance
+any further receives 50 points. In contrast, the champion of an ATP 250 event receives only 250
+points.
 
-See \textcite{buhamra_2025-2} for the details of the modern machine learning approaches and different forecast strategies on Grand Slam tennis tournaments.
+While official rankings are a good indication of the current strengths and abilities of
+tennis players, and can generally be used to predict the winner of a professional tennis match,
+they obviously do not capture the full story and are far from being a reliable predicting tool,
+particularly when the difference in rankings between players is small.
 
-See \textcite{buhamra_2025-1} for the details of the statistical enhanced learning for modeling and prediction tennis matches at Grand Slam tournaments.
+\subsection{Paired comparisons and rating mechanisms}
 
-See \textcite{trucco_2025} for the details of the machine learning framework for forecasting professional tennis matches using ATP statistics and betting odds.
+Noting that official systems often reward frequent participation over absolute performance,
+researchers set out to develop alternative rating mechanisms that could capture player's abilities
+by looking at their past match results, particularly taking into account their opponents' strengths
+rather than the prestige of the tournament or the round the match is played on.
 
-See \textcite{almarashi_2024} for the details of the novel comparative study of NNAR approach with linear stochastic time series models in predicting tennis player's performance.
+One of the earliest attempts to develop an improved rating mechanism for tennis was proposed by
+\textcite{glickman_1999}, who devised a dynamic paired comparison model to estimate the abilities of
+players over time. He showed that, given a particular choice of constants, his method is equivalent
+to the popular Elo rating system developed for chess players by Arpad Elo in 1978. While Glickman
+used match results to produce an alternative ranking for tennis players, he did not test its
+forecasting capabilities.
 
-See \textcite{buhamra_2024} for the details of the modeling and prediction of tennis matches at Grand Slam tournaments.
+\textcite{mchale_2011} pioneered a similar rating mechanism by building a Bradley-Terry type model
+(a popular model for handling paired comparisons) that utilised players' past match results using an
+exponential decay function to account for players' recent form (i.e. giving more importance to
+recent results than older ones). Their model also accounted for the the score of the matches. For
+instance, a player who wins a match with a score of 6-0 6-0 is rewarded more than a player who wins
+with a score of 7-6 7-6 (presumably, a much tigher match). They also note that tennis is played on
+different surfaces (e.g. clay, grass, and hard courts) that can significantly change the performance
+of players, thus they also made further use of weighting techniques so that matches played on
+surfaces other than that of the tournament being considered are given less importance. They showed
+that their model provided superior forecasts to the official rankings using data from nine seasons
+of the ATP tour from 2000-2008, and could provide higher returns against bookmaker odds using a
+simple betting strategy.
 
-See \textcite{fayomi_2022} for the details of the forecasting tennis match results using the Bradley-Terry model.
+\textcite{fayomi_2022} revisited the Bradley-Terry model, using it to compute win probabilities and
+new player ratings that demonstrated the profound impact of court surface (especially, clay vs. hard
+court) on a player's true ability. They applied the model to data from the ATP tour between January
+2019 to September 2020, achieving similar results to that of \textcite{mchale_2011}.
 
-See \textcite{yue_2022} for the details of the study of forecasting tennis matches via the Glicko model.
+Expanding on this relational logic, \textcite{knottenbelt_2012} proposed a common-opponent
+stochastic model that relied on the transitive nature of tennis, predicting match outcomes by
+calculating the difference in service points won against opponents that both players had previously
+faced. They argued that the intuition behind this approach is that tennis is a transitive sport to
+a certain extent (i.e. if player A is better than player B and player B is better than player C,
+then, usually, player A is better than player C). However, as many avid tennis fans will attest,
+this is often not the case. Using this approach, they were nevertheless able to generate 3.8\%
+long-term profit against the best odds offfered by bookmakers for a set of over 2,000 tennis
+matches from the ATP and WTA tours of 2011.
 
-See \textcite{angelini_2022} for the details of the Weighted Elo rating method.
+Subsequent research heavily explored the Elo rating system. \textcite{williams_2021} compared
+standard Elo, surface-specific Elo ratings, and weighted composites against betting odds,
+demonstrating that Elo-based approaches are effective, offering comparable, and sometimes superior,
+forecasting performance to betting odds on Grand Slam matches between 2018 and 2020.
+\textcite{angelini_2022} introduced the concept of a Weighted Elo (WElo), which incorporates the
+margin of victory (i.e., the number of games or sets won) into the standard Elo updating formula to
+better reflect players' strengths. They tested their model on a set of matches from the ATP and WTA
+tours between 2012 and 2020, and claimed that the WElo was superior to the standaard Elo approach
+as well as the Bradley-Terry type model of \textcite{mchale_2011}, among other models.
 
-See \textcite{williams_2021} for the details of the how well do Elo-based ratings predict professional tennis matches.
+\subsection{Machine learning approaches}
 
-See \textcite{wilkens_2021} for the details of the sports prediction and betting models in the machine learning age: The case of tennis.
+Predictive techniques transitioned from statistical models to complex machine learning (ML)
+approaches. An early example is \textcite{somboonphokkaphan_2009}, who deployed a Multi-Layer
+Perceptron (MLP) -- a foundational class of fully-connected feedforward artificial neural network --
+that incorporated time-series history, environmental data in the form of surface type, and several
+statistical features such as winning percentage of first serves and total points won. They tested
+their model on a set of Grand Slam matches between 2003 and 2008, and claimed accuracy rates
+ranging from 69\% to 81\%.
 
-See \textcite{gao_2021} for the details of the random forest model identifies serve strength as a key predictor of tennis match outcome.
+Recognizing that historical data alone misses intangible factors, \textcite{gu_2019} built an
+Analytic Network Process (ANP) -- an advanced, non-linear decision-making framework -- combining
+data analysis with expert human judgments, capturing unquantifiable variables such as a player's
+psychology, brainpower, and stamina. They claimed that their model achieved accuracy of 85.1\%,
+however, it should be noted that this was restricted to a set of only 94 matches from the 2015 US
+Open tournament. Moreover, this approach required the collection of judgements from tennis experts
+based on their knowledge and expertise about the matches and the players, an approach that is
+clearly difficult to scale.
 
-See \textcite{gu_2019} for the details of the predicting the outcome of a tennis tournament: Based on both data and judgments.
+\textcite{gao_2021} built three machine learning models (Logistic Regression, Random Forest, and
+Support Vector Machine), performed an in-depth feature selection process, and compiled one of the
+largest tennis statistics datasets publicly available. They found that a Random Forest classifier
+achieved the best performance, achieving prediction accuracies exceeding 80\%. They also identified
+serve strength -— specifically the percentage of points won on first and second serves -- as a key
+predictor of match outcomes. \textcite{wilkens_2021} conducted a comprehensive comparative study
+using various ML methods (Logistic Regression, Neural Network, Random Forest, Gradient Boosting
+Machine, and Support Vector Machine) on a dataset of over 39,000 matches from the ATP and WTA tours,
+and noted that differences in prediction performance among the various ML approaches were small. He
+also cautioned about the heterogeneous setup and data used throughout the literature -- in some
+cases in conjunction with only short forecasting horizons -- demanding prudence when comparing or
+even generalising their findings.
 
-See \textcite{knottenbelt_2012} for the details of the a common-opponent stochastic model for predicting the outcome of professional tennis matches.
+\textcite{yue_2022} applyed exploratory data analysis (EDA) to examine variables related to match
+results and introduced new variables using the Glicko rating system of \textcite{glickman_1999},
+(including surface-specific ratings), which were then used to build several statistical and machine
+learning models (Logistic Regression, Support Vector Machine, Neural Network, and Light Gradient
+Boosting Machine). The models were trained on a dataset of Grand Slam matches between 2000 and 2019,
+and the results showed only marginal differences in performance between the various models, with the
+best results achieved using surface-specific Glicko ratings, with up to 73.8\% accuracy on the ATP
+matches.
 
-See \textcite{mchale_2011} for the details of the A Bradley-Terry type model for forecasting tennis match results.
+\textcite{buhamra_2025-2} compared several models including regression-based (logistic, LASSO,
+splines) and machine learning approaches (Random Forest, linear and non-linear Support Vector
+Machine, Classification Tree, Random Forest, Artifical Neural Network, and XGBoost) using Grand Slam
+matches from 2011 to 2021. Different features were considered including ATP ranking and points,
+Elo ratings, bookmaker odds, and age variables that take into account the presumably optimal age of
+a tennis player being between 28 and 32 years old. Moreover, they investigated different forecasting
+strategies including ``expanding window'' and ``rolling window''. They found that XGBoost achieved
+the highest classification rates, with up to 83\% accuracy with the expanding window strategy.
 
-See \textcite{somboonphokkaphan_2009} for the details of the tennis winner prediction based on time-series history with neural modeling.
+% \textcite{buhamra_2025-1} - statistical enhanced learning
+% \textcite{buhamra_2024} - similar to \textcite{buhamra_2025-2}
 
+% \textcite{trucco_2025} - XGBoosting using ATP statistics and betting odds.
+
+% \textcite{almarashi_2024} - comparative study of NNAR approach with linear stochastic time series
+% models in predicting tennis player's performance. Only looked at three players: Nadal, Federer, and
+% Djokovic.
 
 \pagebreak
 
@@ -227,8 +322,6 @@ Discuss the implication of the results in the application domain]
 
 
 \appendix
-
-[Optional section for appendices.]
 
 \section{Examples of figure, table and equation}
 
