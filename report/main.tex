@@ -21,7 +21,7 @@
 {\large
 \begin{tabular}{l@{\hspace{2em}}l}
 Author: & Sergio de Carvalho, D24130831 \\
-Date: & 31/05/2026
+Date: & 02/04/2026
 \end{tabular}
 }
 
@@ -35,11 +35,11 @@ Date: & 31/05/2026
 I hereby declare that the work described in this report is, except where
 otherwise stated, entirely my own and that I have not submitted it before for
 summative assessment in third-level education. I have read and understand
-TU Dublin’s policy on plagiarism.
+TU Dublin's policy on plagiarism.
 
 
 Signed .......\raisebox{-2ex}{\includegraphics[width=0.2\linewidth]{sig.png}}.......
-\hspace{3em}Date ...... 31/05/2026 ......
+\hspace{3em}Date ...... 02/04/2026 ......
 
 (Sergio de Carvalho, D24130831)
 
@@ -71,10 +71,19 @@ Signed .......\raisebox{-2ex}{\includegraphics[width=0.2\linewidth]{sig.png}}...
 
 \section*{Acronyms and Abbreviations}
 \begin{tabular}{@{}l@{\hspace{2em}}l}
-[ \\
+\textbf{ANP} & Analytic Network Process \\
 \textbf{ATP} & Association of Tennis Professionals \\
+\textbf{DT} & Decision Tree \\
+\textbf{EDA} & Exploratory Data Analysis \\
+\textbf{GBM} & Gradient Boosting Machine \\
+\textbf{LASSO} & Least Absolute Shrinkage and Selection Operator \\
+\textbf{LGBM} & Light Gradient Boosting Machine \\
+\textbf{ML} & Machine Learning \\
+\textbf{MLP} & Multi-Layer Perceptron \\
+\textbf{RF} & Random Forest \\
+\textbf{SVM} & Support Vector Machine \\
 \textbf{WTA} & Women's Tennis Association \\
-]
+\textbf{XGBoost} & eXtreme Gradient Boosting \\
 \end{tabular}
 
 
@@ -84,11 +93,11 @@ Signed .......\raisebox{-2ex}{\includegraphics[width=0.2\linewidth]{sig.png}}...
 \section{Introduction}
 
 Tennis is a popular sport where the one-on-one nature of competition provides an ideal environment
-for sports analytics, as match outcomes are determined by a more controlled set of variables than
+for sports analytics, as match outcomes are determined by a more controlled set of variables than in
 team-based sports. While professional tennis has benefited from rigorous record-keeping and a wealth
 of statistics about every aspect of the game, accurately predicting match results remains a complex
 challenge due to the intricate interactions between player skills, form, physical and psychological
-state, as well as environmental factors such as weather, court surface type, and tennis ball
+state, as well as environmental factors such as the weather, court surface type, and even tennis ball
 characteristics that can significantly influence the performance of players and the outcome of a
 match.
 
@@ -98,7 +107,7 @@ match.
 The focus of this project is to develop a framework that prioritises the curation of high-quality
 data and the engineering of domain-driven features that can capture the multiple facets of the game
 and be used to predict the results of professional tennis matches. Central to this approach is the
-use of ``enhanced covariates'' —- variables that are not directly observed but are derived through
+use of ``enhanced covariates''---variables that are not directly observed but are derived through
 mathematical transformations or separate statistical models.
 
 There has been significant research on developing statistical models to rank tennis players as
@@ -106,7 +115,7 @@ alternatives to the official rankings published by the professional tennis organ
 parallel, several studies have applied machine learning to predict the results of tennis matches,
 however, most of these studies were restricted to specific tournaments (e.g. Grand Slam tournaments
 only) or did not take full advantage of the available data and statistical models. This project aims
-to address these limitations by tapping into the vast amount of data available, and use machine
+to address these limitations by tapping into the vast amount of data available and using machine
 learning techniques to explore the predictive power of different statistical models proposed in the
 literature while also discovering new ways to improve the predictions of these models.
 
@@ -119,22 +128,23 @@ strategies to improve the performance of professional athletes. It
 is also important for broadcasters and the media in general as it helps them to transform a passive
 viewing experience into an interactive, high-stakes narrative that drives viewer retention and fan
 engagement. Finally, it can be argued that predicting sporting events can help develop valuable
-models and gain insights that could be helpful in diverse areas of human activity, from financial
+models and gain insights that could be useful in diverse areas of human activity, from financial
 markets, to politics and international conflicts \parencite{gu_2019}.
 
 
 \subsection{Project scope}
 
 This project is focused on predicting the results of professional tennis matches on the main events
-organised by the Asssociation of Tennis Professionals (ATP), the men's tennis circuit. While there
+organised by the Association of Tennis Professionals (ATP), the men's tennis circuit. While there
 is a wealth of data available from the Women's Tennis Association (WTA) as well, limiting the scope
 to one of the two circuits allows for a more focused and comprehensive analysis in the limited time
 available for this project. We note that the focus of this project is modelling predictions based
 solely on pre-match data rather than using data collected while the match is in progress.
 
 Finally, we note that there is significant interest in the literature in using betting odds to
-either improve predictions or compare their accuracy. While odds carefully curated and published by
-professional bookmakers can be a valuable tool of information, this project does not use odds data
+either improve predictions or compare their accuracy. While odds that are carefully curated and
+published by professional bookmakers can be a valuable source of information, this project does not
+use odds data
 nor does it focus on this aspect of the problem.
 
 
@@ -154,23 +164,23 @@ player ranking that is used to determine tournament eligibility, entry qualifica
 seeding. This ranking is based on a cumulative rolling points system. Players earn points for each
 match won in an official tournament, and points remain on a player's record for 52 weeks before
 expiring. The number of points awarded for each win is determined by the event category and the
-round the match is played on \parencite{williams_2021}. For instance, the champion of one of the
-four annual Grand Slam events (Australian Open, Roland Garros, Wimbledon, and the US Open) receive
-2,000 points, whereas the winner of a first round match on the same tournament that does not advance
+round in which the match is played \parencite{williams_2021}. For instance, the champion of any of the
+four annual Grand Slam events (Australian Open, Roland Garros, Wimbledon, and the US Open) receives
+2,000 points, whereas the winner of a first-round match in the same tournament who does not advance
 any further receives 50 points. In contrast, the champion of an ATP 250 event receives only 250
 points.
 
 While official rankings are a good indication of the current strengths and abilities of
 tennis players, and can generally be used to predict the winner of a professional tennis match,
-they obviously do not capture the full story and are far from being a reliable predicting tool,
+they obviously do not capture the full story and are far from being a reliable prediction tool,
 particularly when the difference in rankings between players is small.
 
 \subsection{Paired comparisons and rating mechanisms}
 
 Noting that official systems often reward frequent participation over absolute performance,
-researchers set out to develop alternative rating mechanisms that could capture player's abilities
+researchers set out to develop alternative rating mechanisms that could capture players' abilities
 by looking at their past match results, particularly taking into account their opponents' strengths
-rather than the prestige of the tournament or the round the match is played on.
+rather than the prestige of the tournament or the round in which the match is played.
 
 One of the earliest attempts to develop an improved rating mechanism for tennis was proposed by
 \textcite{glickman_1999}, who devised a dynamic paired comparison model to estimate the abilities of
@@ -182,9 +192,9 @@ forecasting capabilities.
 \textcite{mchale_2011} pioneered a similar rating mechanism by building a Bradley-Terry type model
 (a popular model for handling paired comparisons) that utilised players' past match results using an
 exponential decay function to account for players' recent form (i.e. giving more importance to
-recent results than older ones). Their model also accounted for the the score of the matches. For
+recent results than older ones). Their model also accounted for the score of the matches. For
 instance, a player who wins a match with a score of 6-0 6-0 is rewarded more than a player who wins
-with a score of 7-6 7-6 (presumably, a much tigher match). They also note that tennis is played on
+with a score of 7-6 7-6 (presumably, a much tighter match). They also note that tennis is played on
 different surfaces (e.g. clay, grass, and hard courts) that can significantly change the performance
 of players, thus they also made further use of weighting techniques so that matches played on
 surfaces other than that of the tournament being considered are given less importance. They showed
@@ -204,7 +214,7 @@ faced. They argued that the intuition behind this approach is that tennis is a t
 a certain extent (i.e. if player A is better than player B and player B is better than player C,
 then, usually, player A is better than player C). However, as many avid tennis fans will attest,
 this is often not the case. Using this approach, they were nevertheless able to generate 3.8\%
-long-term profit against the best odds offfered by bookmakers for a set of over 2,000 tennis
+long-term profit against the best odds offered by bookmakers for a set of over 2,000 tennis
 matches from the ATP and WTA tours of 2011.
 
 Subsequent research heavily explored the Elo rating system. \textcite{williams_2021} compared
@@ -214,7 +224,7 @@ forecasting performance to betting odds on Grand Slam matches between 2018 and 2
 \textcite{angelini_2022} introduced the concept of a Weighted Elo (WElo), which incorporates the
 margin of victory (i.e., the number of games or sets won) into the standard Elo updating formula to
 better reflect players' strengths. They tested their model on a set of matches from the ATP and WTA
-tours between 2012 and 2020, and claimed that the WElo was superior to the standaard Elo approach
+tours between 2012 and 2020, and claimed that the WElo was superior to the standard Elo approach
 as well as the Bradley-Terry type model of \textcite{mchale_2011}, among other models.
 
 \subsection{Machine learning approaches}
@@ -227,7 +237,7 @@ statistical features such as winning percentage of first serves and total points
 their model on a set of Grand Slam matches between 2003 and 2008, and claimed accuracy rates
 ranging from 69\% to 81\%.
 
-Recognizing that historical data alone misses intangible factors, \textcite{gu_2019} built an
+Recognising that historical data alone misses intangible factors, \textcite{gu_2019} built an
 Analytic Network Process (ANP) -- an advanced, non-linear decision-making framework -- combining
 data analysis with expert human judgments, capturing unquantifiable variables such as a player's
 psychology, brainpower, and stamina. They claimed that their model achieved accuracy of 85.1\%,
@@ -240,7 +250,7 @@ clearly difficult to scale.
 Support Vector Machine), performed an in-depth feature selection process, and compiled one of the
 largest tennis statistics datasets publicly available. They found that a Random Forest classifier
 achieved the best performance, achieving prediction accuracies exceeding 80\%. They also identified
-serve strength -— specifically the percentage of points won on first and second serves -- as a key
+serve strength---specifically the percentage of points won on first and second serves---as a key
 predictor of match outcomes. \textcite{wilkens_2021} conducted a comprehensive comparative study
 using various ML methods (Logistic Regression, Neural Network, Random Forest, Gradient Boosting
 Machine, and Support Vector Machine) on a dataset of over 39,000 matches from the ATP and WTA tours,
@@ -249,9 +259,9 @@ also cautioned about the heterogeneous setup and data used throughout the litera
 cases in conjunction with only short forecasting horizons -- demanding prudence when comparing or
 even generalising their findings.
 
-\textcite{yue_2022} applyed exploratory data analysis (EDA) to examine variables related to match
+\textcite{yue_2022} applied exploratory data analysis (EDA) to examine variables related to match
 results and introduced new variables using the Glicko rating system of \textcite{glickman_1999},
-(including surface-specific ratings), which were then used to build several statistical and machine
+including surface-specific ratings, which were then used to build several statistical and machine
 learning models (Logistic Regression, Support Vector Machine, Neural Network, and Light Gradient
 Boosting Machine). The models were trained on a dataset of Grand Slam matches between 2000 and 2019,
 and the results showed only marginal differences in performance between the various models, with the
@@ -259,8 +269,8 @@ best results achieved using surface-specific Glicko ratings, with up to 73.8\% a
 matches.
 
 \textcite{buhamra_2025-2} compared several models including regression-based (logistic, LASSO,
-splines) and machine learning approaches (Random Forest, linear and non-linear Support Vector
-Machine, Classification Tree, Random Forest, Artifical Neural Network, and XGBoost) using Grand Slam
+splines) and machine learning approaches (Classification Tree, Random Forest, linear and non-linear
+Support Vector Machine, Artificial Neural Network, and XGBoost) using Grand Slam
 matches from 2011 to 2021. Different features were considered including ATP ranking and points,
 Elo ratings, bookmaker odds, and age variables that take into account the presumably optimal age of
 a tennis player being between 28 and 32 years old. Moreover, they investigated different forecasting
