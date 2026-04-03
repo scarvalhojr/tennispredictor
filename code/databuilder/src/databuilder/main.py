@@ -12,7 +12,7 @@ from logging import DEBUG, INFO, basicConfig, error, info, warning
 from pathlib import Path
 
 from .data import DataInconsistencyError, Player, TennisDataset
-from .enums import Hand
+from .enums import Hand, Surface, TournamentLevel
 
 
 def parse_player_id(raw: str | None, line_no: int) -> int | None:
@@ -29,8 +29,8 @@ def parse_player_id(raw: str | None, line_no: int) -> int | None:
         ) from exc
 
 
-def parse_name(name: str | None) -> str | None:
-    return (name or "").strip() or None
+def parse_string(s: str | None) -> str | None:
+    return (s or "").strip() or None
 
 
 def parse_hand(raw: str | None, line_no: int) -> Hand | None:
@@ -42,7 +42,7 @@ def parse_hand(raw: str | None, line_no: int) -> Hand | None:
     try:
         return Hand(value)
     except ValueError:
-        warning(f"Ignoring invalid hand: '{raw}' at line number {line_no}")
+        warning(f"Ignoring invalid hand '{raw}' at line number {line_no}")
         return None
 
 
@@ -54,29 +54,14 @@ def parse_date(raw: str | None, line_no: int) -> date | None:
     s = str(raw).strip()
     if len(s) != 8 or not s.isdigit():
         if len(s) > 0:
-            warning(f"Ignoring invalid date: '{s}' at line number {line_no}")
+            warning(f"Ignoring invalid date '{raw}' at line number {line_no}")
         return None
 
     year, month, day = int(s[:4]), int(s[4:6]), int(s[6:8])
     try:
         return date(year, month, day)
     except ValueError:
-        warning(f"Ignoring invalid date: '{s}' at line number {line_no}")
-        return None
-
-
-def parse_height(raw: str | None, line_no: int) -> int | None:
-    if raw is None:
-        return None
-
-    s = str(raw).strip()
-    if not s:
-        return None
-
-    try:
-        return int(float(s))
-    except ValueError:
-        warning(f"Ignoring invalid height: '{s}' at line number {line_no}")
+        warning(f"Ignoring invalid date '{raw}' at line number {line_no}")
         return None
 
 
@@ -89,11 +74,11 @@ def parse_country_code(raw: str | None, line_no: int) -> str | None:
         return s
 
     if len(s) > 0:
-        warning(f"Ignoring invalid country code: '{s}' at line number {line_no}")
+        warning(f"Ignoring invalid country code '{raw}' at line number {line_no}")
     return None
 
 
-def parse_position(raw: str | None, line_no: int) -> int | None:
+def parse_integer(raw: str | None, line_no: int) -> int | None:
     if raw is None:
         return None
     value = str(raw).strip()
@@ -103,22 +88,34 @@ def parse_position(raw: str | None, line_no: int) -> int | None:
         return int(value)
     except ValueError as exc:
         raise DataInconsistencyError(
-            f"Invalid ranking position ('{value}') at line number {line_no}"
+            f"Invalid integer '{raw}' at line number {line_no}"
         ) from exc
 
 
-def parse_points(raw: str | None, line_no: int) -> int | None:
+def parse_surface(raw: str | None, line_no: int) -> Surface | None:
     if raw is None:
         return None
-    value = str(raw).strip()
+    initial = str(raw).strip().capitalize()
+    if not initial:
+        return None
+    try:
+        return Surface(initial)
+    except ValueError:
+        warning(f"Ignoring invalid surface '{raw}' at line number {line_no}")
+        return None
+
+
+def parse_tournament_level(raw: str | None, line_no: int) -> TournamentLevel | None:
+    if raw is None:
+        return None
+    value = str(raw).strip().upper()
     if not value:
         return None
     try:
-        return int(value)
-    except ValueError as exc:
-        raise DataInconsistencyError(
-            f"Invalid ranking points ('{value}') at line number {line_no}"
-        ) from exc
+        return TournamentLevel(value)
+    except ValueError:
+        warning(f"Ignoring invalid tournament level '{raw}' at line number {line_no}")
+        return None
 
 
 def load_players(csv_dir: Path, dataset: TennisDataset) -> None:
@@ -154,12 +151,12 @@ def load_players(csv_dir: Path, dataset: TennisDataset) -> None:
 
             player = Player(
                 player_id=player_id,
-                first_name=parse_name(row.get("name_first")),
-                last_name=parse_name(row.get("name_last")),
+                first_name=parse_string(row.get("name_first")),
+                last_name=parse_string(row.get("name_last")),
                 hand=parse_hand(row.get("hand"), line_no),
                 birth_date=parse_date(row.get("dob"), line_no),
                 country_code=parse_country_code(row.get("ioc"), line_no),
-                height_cm=parse_height(row.get("height"), line_no),
+                height_cm=parse_integer(row.get("height"), line_no),
             )
             dataset.add_player(player)
 
@@ -185,10 +182,11 @@ def load_rankings(csv_dir: Path, dataset: TennisDataset) -> None:
 
 
 def load_rankings_file(file: Path, dataset: TennisDataset) -> None:
+    required = {"ranking_date", "rank", "player", "points"}
+
     info(f"Loading rankings from {file}")
     with file.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        required = {"ranking_date", "rank", "player", "points"}
 
         if reader.fieldnames is None:
             raise SystemExit(f"{file}: CSV has no header row.")
@@ -219,11 +217,64 @@ def load_rankings_file(file: Path, dataset: TennisDataset) -> None:
                 )
                 continue
 
-            position = parse_position(row.get("rank"), line_no=line_no)
-            points = parse_points(row.get("points"), line_no=line_no)
+            position = parse_integer(row.get("rank"), line_no=line_no)
+            points = parse_integer(row.get("points"), line_no=line_no)
             player.add_ranking(ranking_date, position, points)
 
         info(f"Loaded {reader.line_num - 1} ranking rows from {file}")
+
+
+def load_matches(csv_dir: Path, dataset: TennisDataset) -> None:
+    # Match files from the main ATP tour events are named atp_matches_????.csv
+    files = sorted(csv_dir.glob("atp_matches_????.csv"))
+
+    if not files:
+        raise SystemExit(
+            f"No match CSV files found under {csv_dir} "
+            "(expected atp_matches_????.csv)."
+        )
+
+    for file in files:
+        load_matches_file(file, dataset)
+
+
+def load_matches_file(file: Path, dataset: TennisDataset) -> None:
+    required = {
+        "tourney_id",
+        "tourney_name",
+        "surface",
+        "draw_size",
+        "tourney_level",
+        "tourney_date",
+    }
+
+    info(f"Loading matches from {file}")
+    with file.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+
+        if reader.fieldnames is None:
+            raise SystemExit(f"{file}: CSV has no header row.")
+        missing = required - set(reader.fieldnames)
+        if missing:
+            raise SystemExit(f"{file}: missing columns: {sorted(missing)}")
+
+        for line_no, row in enumerate(reader, start=2):
+            tournament_id = parse_string(row.get("tourney_id"))
+            if not tournament_id:
+                raise DataInconsistencyError(
+                    f"Tournament ID is missing at line number {line_no}"
+                )
+
+            _tournament = dataset.add_tournament(
+                tournament_id,
+                tournament_name=parse_string(row.get("tourney_name")),
+                surface=parse_surface(row.get("surface"), line_no=line_no),
+                draw_size=parse_integer(row.get("draw_size"), line_no=line_no),
+                tournament_level=parse_tournament_level(
+                    row.get("tourney_level"), line_no=line_no
+                ),
+                tournament_date=parse_date(row.get("tourney_date"), line_no=line_no),
+            )
 
 
 def parse_args():
@@ -273,6 +324,7 @@ def main() -> None:
     try:
         load_players(csv_dir, dataset)
         load_rankings(csv_dir, dataset)
+        load_matches(csv_dir, dataset)
     except DataInconsistencyError as exc:
         error(exc)
         raise SystemExit(1) from exc

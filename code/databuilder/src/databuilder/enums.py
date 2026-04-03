@@ -13,3 +13,23 @@ class Hand(StrEnum):
     LEFT = "L"
     RIGHT = "R"
     AMBIDEXTROUS = "A"
+
+
+class Surface(StrEnum):
+    """A tennis court surface."""
+
+    CLAY = "Clay"
+    GRASS = "Grass"
+    HARD = "Hard"
+    CARPET = "Carpet"
+
+
+class TournamentLevel(StrEnum):
+    """A tennis tournament level."""
+
+    ATP = "A"
+    DAVIS_CUP = "D"
+    FINALS = "F"
+    GRAND_SLAM = "G"
+    MASTERS_1000 = "M"
+    OLYMPICS = "O"
