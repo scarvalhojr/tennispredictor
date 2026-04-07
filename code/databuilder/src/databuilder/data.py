@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from logging import warning
 
-from .enums import Surface, TournamentLevel
+from .enums import Hand, Surface, TournamentLevel
 
 
 class DataInconsistencyError(Exception):
@@ -40,31 +40,31 @@ class TennisDataset:
     def add_tournament(
         self,
         tournament_id: str,
+        tournament_date: date,
+        tournament_level: TournamentLevel,
         *,
         tournament_name: str | None = None,
         surface: Surface | None = None,
         draw_size: int | None = None,
-        tournament_level: TournamentLevel | None = None,
-        tournament_date: date | None = None,
     ):
         tournament = self.tournaments.get(tournament_id)
         if tournament is None:
             tournament = Tournament(
                 tournament_id,
+                tournament_date,
+                tournament_level,
                 tournament_name=tournament_name,
                 surface=surface,
                 draw_size=draw_size,
-                tournament_level=tournament_level,
-                tournament_date=tournament_date,
             )
             self.tournaments[tournament_id] = tournament
         else:
             tournament.update_if_missing(
+                tournament_date,
+                tournament_level,
                 tournament_name=tournament_name,
                 surface=surface,
                 draw_size=draw_size,
-                tournament_level=tournament_level,
-                tournament_date=tournament_date,
             )
         return tournament
 
@@ -75,7 +75,6 @@ class TennisDataset:
         return len(self.tournaments)
 
 
-# pylint: disable=too-many-instance-attributes
 class Player:
     """A tennis player."""
 
@@ -85,7 +84,7 @@ class Player:
         *,
         first_name: str | None = None,
         last_name: str | None = None,
-        hand: str | None = None,
+        hand: Hand | None = None,
         birth_date: date | None = None,
         country_code: str | None = None,
         height_cm: int | None,
@@ -101,6 +100,67 @@ class Player:
 
     def __str__(self) -> str:
         return f"{self.first_name} {self.last_name} ({self.player_id})"
+
+    def check_match_data(
+        self,
+        tournament: Tournament,
+        *,
+        name: str | None,
+        hand: Hand | None,
+        height: int | None,
+        country: str | None,
+        age: float | None,
+        rank: int | None,
+        rank_points: int | None,
+    ):
+        full_name = " ".join([self.first_name or "", self.last_name or ""]).strip()
+        if name is not None and name != full_name:
+            warning(f"Ignoring name mismatch for {self} ({full_name} -> {name})")
+
+        if hand is not None and self.hand != hand:
+            warning(f"Ignoring hand mismatch for {self} ({self.hand} -> {hand})")
+
+        if height is not None and self.height_cm != height:
+            warning(
+                f"Ignoring height mismatch for {self} ({self.height_cm} -> {height})"
+            )
+
+        if country is not None and self.country_code != country:
+            warning(
+                f"Ignoring country mismatch for {self} ({self.country_code} "
+                f"-> {country})"
+            )
+
+        if self.birth_date is not None and age is not None:
+            age_gap = age - (tournament.tournament_date - self.birth_date).days / 365.25
+            if abs(age_gap) > 0.2:
+                warning(f"Ignoring age mismatch for {self} ({age_gap:.1f} years)")
+
+        ranking = self.get_ranking(tournament.tournament_date)
+        rank_at_tournament = ranking.position if ranking else None
+        points_at_tournament = ranking.points if ranking else None
+        if not rank_at_tournament or not points_at_tournament:
+            warning(
+                f"Missing ranking data for {self} at {tournament.tournament_level} "
+                f"event on {tournament.tournament_date} (position: "
+                f"{rank_at_tournament}, points: {points_at_tournament}) vs match data "
+                f"(position: {rank}, points: {rank_points})"
+            )
+        else:
+            if rank is not None and rank_at_tournament != rank:
+                warning(
+                    f"Ignoring match ranking position mismatch for {self} at "
+                    f"{tournament.tournament_level} event on "
+                    f"{tournament.tournament_date} ({rank_at_tournament}) vs "
+                    f"match data ({rank})"
+                )
+            if rank_points is not None and points_at_tournament != rank_points:
+                warning(
+                    f"Ignoring match ranking points mismatch for {self} at "
+                    f"{tournament.tournament_level} event on "
+                    f"{tournament.tournament_date} ({points_at_tournament}) vs "
+                    f"match data ({rank_points})"
+                )
 
     def add_ranking(self, ranking_date: date, position: int | None, points: int | None):
         ranking = self.ranking_history.get(ranking_date)
@@ -157,32 +217,44 @@ class Tournament:
     def __init__(
         self,
         tournament_id: str,
+        tournament_date: date,
+        tournament_level: TournamentLevel,
         *,
         tournament_name: str | None = None,
         surface: Surface | None = None,
         draw_size: int | None = None,
-        tournament_level: TournamentLevel | None = None,
-        tournament_date: date | None = None,
     ):
         self.tournament_id = tournament_id
+        self.tournament_date = tournament_date
+        self.tournament_level = tournament_level
         self.tournament_name = tournament_name
         self.surface = surface
         self.draw_size = draw_size
-        self.tournament_level = tournament_level
-        self.tournament_date = tournament_date
 
     def __str__(self) -> str:
         return f"{self.tournament_name} ({self.tournament_id})"
 
     def update_if_missing(
         self,
+        tournament_date: date,
+        tournament_level: TournamentLevel,
         *,
         tournament_name: str | None = None,
         surface: Surface | None = None,
         draw_size: int | None = None,
-        tournament_level: TournamentLevel | None = None,
-        tournament_date: date | None = None,
     ):
+        if self.tournament_date != tournament_date:
+            raise DataInconsistencyError(
+                f"Tournament date mismatch for {self} "
+                f"({self.tournament_date} -> {tournament_date})"
+            )
+
+        if self.tournament_level != tournament_level:
+            raise DataInconsistencyError(
+                f"Tournament level mismatch for {self} "
+                f"({self.tournament_level} -> {tournament_level})"
+            )
+
         if self.tournament_name is None:
             self.tournament_name = tournament_name
         elif tournament_name is not None and self.tournament_name != tournament_name:
@@ -203,20 +275,4 @@ class Tournament:
         elif draw_size is not None and self.draw_size != draw_size:
             raise DataInconsistencyError(
                 f"Draw size mismatch for {self} ({self.draw_size} -> {draw_size})"
-            )
-
-        if self.tournament_level is None:
-            self.tournament_level = tournament_level
-        elif tournament_level is not None and self.tournament_level != tournament_level:
-            raise DataInconsistencyError(
-                f"Tournament level mismatch for {self} "
-                f"({self.tournament_level} -> {tournament_level})"
-            )
-
-        if self.tournament_date is None:
-            self.tournament_date = tournament_date
-        elif tournament_date is not None and self.tournament_date != tournament_date:
-            raise DataInconsistencyError(
-                f"Tournament date mismatch for {self} "
-                f"({self.tournament_date} -> {tournament_date})"
             )

@@ -32,4 +32,16 @@ class TournamentLevel(StrEnum):
     FINALS = "F"
     GRAND_SLAM = "G"
     MASTERS_1000 = "M"
+    NEXT_GEN_FINALS = "N"
     OLYMPICS = "O"
+
+    def __str__(self) -> str:
+        return {
+            "A": "ATP",
+            "D": "Davis Cup",
+            "F": "ATP Finals",
+            "G": "Grand Slam",
+            "M": "Masters 1000",
+            "N": "Next Gen Finals",
+            "O": "Olympics",
+        }[self.value]

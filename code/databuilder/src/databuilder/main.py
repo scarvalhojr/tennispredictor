@@ -10,23 +10,10 @@ import csv
 from datetime import date
 from logging import DEBUG, INFO, basicConfig, error, info, warning
 from pathlib import Path
+from random import choice
 
-from .data import DataInconsistencyError, Player, TennisDataset
+from .data import DataInconsistencyError, Player, TennisDataset, Tournament
 from .enums import Hand, Surface, TournamentLevel
-
-
-def parse_player_id(raw: str | None, line_no: int) -> int | None:
-    if raw is None:
-        return None
-    value = str(raw).strip()
-    if not value:
-        return None
-    try:
-        return int(value)
-    except ValueError as exc:
-        raise DataInconsistencyError(
-            f"Invalid player ID ('{value}') at line number {line_no}"
-        ) from exc
 
 
 def parse_string(s: str | None) -> str | None:
@@ -70,6 +57,8 @@ def parse_country_code(raw: str | None, line_no: int) -> str | None:
         return None
 
     s = str(raw).strip().upper()
+    if s == "UNK":
+        return None
     if len(s) == 3:
         return s
 
@@ -89,6 +78,20 @@ def parse_integer(raw: str | None, line_no: int) -> int | None:
     except ValueError as exc:
         raise DataInconsistencyError(
             f"Invalid integer '{raw}' at line number {line_no}"
+        ) from exc
+
+
+def parse_float(raw: str | None, line_no: int) -> float | None:
+    if raw is None:
+        return None
+    value = str(raw).strip()
+    if not value:
+        return None
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise DataInconsistencyError(
+            f"Invalid float '{raw}' at line number {line_no}"
         ) from exc
 
 
@@ -143,7 +146,7 @@ def load_players(csv_dir: Path, dataset: TennisDataset) -> None:
             raise SystemExit(f"CSV missing columns: {sorted(missing)}")
 
         for line_no, row in enumerate(reader, start=2):
-            player_id = parse_player_id(row.get("player_id"), line_no=line_no)
+            player_id = parse_integer(row.get("player_id"), line_no=line_no)
             if not player_id:
                 raise DataInconsistencyError(
                     f"Player with missing ID at row number {line_no}"
@@ -196,7 +199,7 @@ def load_rankings_file(file: Path, dataset: TennisDataset) -> None:
 
         for line_no, row in enumerate(reader, start=2):
             player_id_str = row.get("player")
-            player_id = parse_player_id(player_id_str, line_no=line_no)
+            player_id = parse_integer(player_id_str, line_no=line_no)
             if player_id:
                 player = dataset.get_player(player_id)
             else:
@@ -259,22 +262,97 @@ def load_matches_file(file: Path, dataset: TennisDataset) -> None:
             raise SystemExit(f"{file}: missing columns: {sorted(missing)}")
 
         for line_no, row in enumerate(reader, start=2):
-            tournament_id = parse_string(row.get("tourney_id"))
-            if not tournament_id:
-                raise DataInconsistencyError(
-                    f"Tournament ID is missing at line number {line_no}"
-                )
+            tournament = parse_tournament(dataset, row, line_no)
+            parse_match(dataset, tournament, row, line_no)
 
-            _tournament = dataset.add_tournament(
-                tournament_id,
-                tournament_name=parse_string(row.get("tourney_name")),
-                surface=parse_surface(row.get("surface"), line_no=line_no),
-                draw_size=parse_integer(row.get("draw_size"), line_no=line_no),
-                tournament_level=parse_tournament_level(
-                    row.get("tourney_level"), line_no=line_no
-                ),
-                tournament_date=parse_date(row.get("tourney_date"), line_no=line_no),
-            )
+
+def parse_tournament(
+    dataset: TennisDataset, row: dict[str, str], line_no: int
+) -> Tournament:
+    tournament_id = parse_string(row.get("tourney_id"))
+    if not tournament_id:
+        raise DataInconsistencyError(
+            f"Tournament ID is missing at line number {line_no}"
+        )
+
+    tournament_date = parse_date(row.get("tourney_date"), line_no=line_no)
+    if tournament_date is None:
+        raise DataInconsistencyError(
+            f"Tournament date is missing or invalid at line number {line_no}"
+        )
+
+    tournament_level = parse_tournament_level(row.get("tourney_level"), line_no=line_no)
+    if tournament_level is None:
+        raise DataInconsistencyError(
+            f"Tournament level is missing or invalid at line number {line_no}"
+        )
+
+    return dataset.add_tournament(
+        tournament_id,
+        tournament_date,
+        tournament_level,
+        tournament_name=parse_string(row.get("tourney_name")),
+        surface=parse_surface(row.get("surface"), line_no=line_no),
+        draw_size=parse_integer(row.get("draw_size"), line_no=line_no),
+    )
+
+
+def parse_match(
+    dataset: TennisDataset, tournament: Tournament, row: dict[str, str], line_no: int
+) -> None:
+    match_num = parse_integer(row.get("match_num"), line_no=line_no)
+    if not match_num:
+        raise DataInconsistencyError(f"Missing match number at line number {line_no}")
+
+    winner_or_loser = [(1, "winner", "loser"), (2, "loser", "winner")]
+    _winner, prefix1, prefix2 = choice(winner_or_loser)
+    _player1_id = parse_player_data(
+        dataset,
+        tournament,
+        row,
+        prefix1,
+        line_no=line_no,
+    )
+    _player2_id = parse_player_data(
+        dataset,
+        tournament,
+        row,
+        prefix2,
+        line_no=line_no,
+    )
+
+
+# _pylint: disable=too-many-positional-arguments
+def parse_player_data(
+    dataset: TennisDataset,
+    tournament: Tournament,
+    row: dict[str, str],
+    prefix: str,
+    line_no: int,
+) -> int | None:
+    player_id_str = row.get(prefix + "_id")
+    player_id = parse_integer(player_id_str, line_no=line_no)
+    if player_id:
+        player = dataset.get_player(player_id)
+    else:
+        player = None
+    if not player:
+        raise DataInconsistencyError(
+            f"Missing or unknown {prefix} player ID '{player_id_str}' "
+            f"at line number {line_no}"
+        )
+
+    player.check_match_data(
+        tournament,
+        name=parse_string(row.get(prefix + "_name")),
+        hand=parse_hand(row.get(prefix + "_hand"), line_no=line_no),
+        height=parse_integer(row.get(prefix + "_ht"), line_no=line_no),
+        country=parse_country_code(row.get(prefix + "_ioc"), line_no=line_no),
+        age=parse_float(row.get(prefix + "_age"), line_no=line_no),
+        rank=parse_integer(row.get(prefix + "_rank"), line_no=line_no),
+        rank_points=parse_integer(row.get(prefix + "_rank_points"), line_no=line_no),
+    )
+    return player_id
 
 
 def parse_args():
