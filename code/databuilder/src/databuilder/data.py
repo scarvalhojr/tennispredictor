@@ -41,10 +41,10 @@ class TennisDataset:
     def add_tournament(
         self,
         tournament_id: str,
-        tournament_date: date,
-        tournament_level: TournamentLevel,
+        start_date: date,
+        level: TournamentLevel,
         *,
-        tournament_name: str | None = None,
+        name: str | None = None,
         surface: Surface | None = None,
         draw_size: int | None = None,
     ):
@@ -52,18 +52,18 @@ class TennisDataset:
         if tournament is None:
             tournament = Tournament(
                 tournament_id,
-                tournament_date,
-                tournament_level,
-                tournament_name=tournament_name,
+                start_date,
+                level,
+                name=name,
                 surface=surface,
                 draw_size=draw_size,
             )
             self.tournaments[tournament_id] = tournament
         else:
             tournament.update_if_missing(
-                tournament_date,
-                tournament_level,
-                tournament_name=tournament_name,
+                start_date,
+                level,
+                name=name,
                 surface=surface,
                 draw_size=draw_size,
             )
@@ -133,34 +133,32 @@ class Player:
             )
 
         if self.birth_date is not None and age is not None:
-            age_gap = age - (tournament.tournament_date - self.birth_date).days / 365.25
+            age_gap = age - (tournament.start_date - self.birth_date).days / 365.25
             if abs(age_gap) > 0.2:
                 warning(f"Ignoring age mismatch for {self} ({age_gap:.1f} years)")
 
-        ranking = self.get_ranking(tournament.tournament_date)
+        ranking = self.get_ranking(tournament.start_date)
         rank_at_tournament = ranking.position if ranking else None
         points_at_tournament = ranking.points if ranking else None
         if not rank_at_tournament or not points_at_tournament:
             warning(
-                f"Missing ranking data for {self} at {tournament.tournament_level} "
-                f"event on {tournament.tournament_date} (position: "
-                f"{rank_at_tournament}, points: {points_at_tournament}) vs match data "
-                f"(position: {rank}, points: {rank_points})"
+                f"Missing ranking data for {self} at {tournament.level} event on "
+                f"{tournament.start_date} (position: {rank_at_tournament}, points: "
+                f"{points_at_tournament}) vs match data (position: {rank}, points: "
+                f"{rank_points})"
             )
         else:
             if rank is not None and rank_at_tournament != rank:
                 warning(
                     f"Ignoring match ranking position mismatch for {self} at "
-                    f"{tournament.tournament_level} event on "
-                    f"{tournament.tournament_date} ({rank_at_tournament}) vs "
-                    f"match data ({rank})"
+                    f"{tournament.level} event on {tournament.start_date} "
+                    f"({rank_at_tournament}) vs match data ({rank})"
                 )
             if rank_points is not None and points_at_tournament != rank_points:
                 warning(
                     f"Ignoring match ranking points mismatch for {self} at "
-                    f"{tournament.tournament_level} event on "
-                    f"{tournament.tournament_date} ({points_at_tournament}) vs "
-                    f"match data ({rank_points})"
+                    f"{tournament.level} event on {tournament.start_date} "
+                    f"({points_at_tournament}) vs match data ({rank_points})"
                 )
 
     def add_ranking(self, ranking_date: date, position: int | None, points: int | None):
@@ -218,52 +216,49 @@ class Tournament:
     def __init__(
         self,
         tournament_id: str,
-        tournament_date: date,
-        tournament_level: TournamentLevel,
+        start_date: date,
+        level: TournamentLevel,
         *,
-        tournament_name: str | None = None,
+        name: str | None = None,
         surface: Surface | None = None,
         draw_size: int | None = None,
     ):
-        # TODO: rename attributes: start_date, level, name
         self.tournament_id = tournament_id
-        self.tournament_date = tournament_date
-        self.tournament_level = tournament_level
-        self.tournament_name = tournament_name
+        self.start_date = start_date
+        self.level = level
+        self.name = name
         self.surface = surface
         self.draw_size = draw_size
         self.matches: dict[int, Match] = {}
 
     def __str__(self) -> str:
-        return f"{self.tournament_name} ({self.tournament_id})"
+        return f"{self.name} ({self.tournament_id})"
 
     def update_if_missing(
         self,
-        tournament_date: date,
-        tournament_level: TournamentLevel,
+        start_date: date,
+        level: TournamentLevel,
         *,
-        tournament_name: str | None = None,
+        name: str | None = None,
         surface: Surface | None = None,
         draw_size: int | None = None,
     ):
-        if self.tournament_date != tournament_date:
+        if self.start_date != start_date:
             raise DataInconsistencyError(
-                f"Tournament date mismatch for {self} "
-                f"({self.tournament_date} -> {tournament_date})"
+                f"Tournament start date mismatch for {self} "
+                f"({self.start_date} -> {start_date})"
             )
 
-        if self.tournament_level != tournament_level:
+        if self.level != level:
             raise DataInconsistencyError(
-                f"Tournament level mismatch for {self} "
-                f"({self.tournament_level} -> {tournament_level})"
+                f"Tournament level mismatch for {self} ({self.level} -> {level})"
             )
 
-        if self.tournament_name is None:
-            self.tournament_name = tournament_name
-        elif tournament_name is not None and self.tournament_name != tournament_name:
+        if self.name is None:
+            self.name = name
+        elif name is not None and self.name != name:
             raise DataInconsistencyError(
-                f"Tournament name mismatch for {self} "
-                f"({self.tournament_name} -> {tournament_name})"
+                f"Tournament name mismatch for {self} ({self.name} -> {name})"
             )
 
         if self.surface is None:

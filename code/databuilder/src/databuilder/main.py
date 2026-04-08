@@ -16,6 +16,7 @@ from .data import DataInconsistencyError, Player, TennisDataset, Tournament
 from .enums import Hand, Surface, TournamentLevel
 
 
+# TODO: move all parseing functions to a separate file
 def parse_string(s: str | None) -> str | None:
     return (s or "").strip() or None
 
@@ -271,24 +272,24 @@ def parse_tournament(
             f"Tournament ID is missing at line number {line_no}"
         )
 
-    tournament_date = parse_date(row.get("tourney_date"), line_no=line_no)
-    if tournament_date is None:
+    start_date = parse_date(row.get("tourney_date"), line_no=line_no)
+    if start_date is None:
         raise DataInconsistencyError(
-            f"Tournament date is missing or invalid at line number {line_no}"
+            f"Tournament start date is missing or invalid at line number {line_no}"
         )
 
-    tournament_level = parse_tournament_level(row.get("tourney_level"), line_no=line_no)
-    if tournament_level is None:
+    level = parse_tournament_level(row.get("tourney_level"), line_no=line_no)
+    if level is None:
         raise DataInconsistencyError(
             f"Tournament level is missing or invalid for match on "
-            f"{tournament_date} at line number {line_no}"
+            f"{start_date} at line number {line_no}"
         )
 
     return dataset.add_tournament(
         tournament_id,
-        tournament_date,
-        tournament_level,
-        tournament_name=parse_string(row.get("tourney_name")),
+        start_date,
+        level,
+        name=parse_string(row.get("tourney_name")),
         surface=parse_surface(row.get("surface"), line_no=line_no),
         draw_size=parse_integer(row.get("draw_size"), line_no=line_no),
     )
@@ -305,7 +306,7 @@ def parse_match(
     if score is None:
         warning(
             f"Ignoring match with missing score on "
-            f"{tournament.tournament_date} at line number {line_no}"
+            f"{tournament.start_date} at line number {line_no}"
         )
         return
 
@@ -314,7 +315,7 @@ def parse_match(
     if best_of not in (3, 5):
         warning(
             f"Ignoring match with best of {best_of_str} format on "
-            f"{tournament.tournament_date} at line number {line_no}"
+            f"{tournament.start_date} at line number {line_no}"
         )
         return
 
