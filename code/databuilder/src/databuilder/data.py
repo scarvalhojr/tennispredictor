@@ -4,6 +4,7 @@ Data model classes for the tennis dataset.
 
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 from logging import warning
 
@@ -224,12 +225,14 @@ class Tournament:
         surface: Surface | None = None,
         draw_size: int | None = None,
     ):
+        # TODO: rename attributes: start_date, level, name
         self.tournament_id = tournament_id
         self.tournament_date = tournament_date
         self.tournament_level = tournament_level
         self.tournament_name = tournament_name
         self.surface = surface
         self.draw_size = draw_size
+        self.matches: dict[int, Match] = {}
 
     def __str__(self) -> str:
         return f"{self.tournament_name} ({self.tournament_id})"
@@ -275,4 +278,101 @@ class Tournament:
         elif draw_size is not None and self.draw_size != draw_size:
             raise DataInconsistencyError(
                 f"Draw size mismatch for {self} ({self.draw_size} -> {draw_size})"
+            )
+
+    def add_match(
+        self,
+        match_num: int,
+        player1_id: int,
+        player2_id: int,
+        winner: int,
+        *,
+        score: str,
+        best_of: int,
+    ):
+        if match_num in self.matches:
+            raise DataInconsistencyError(
+                f"Match number {match_num} already exists for {self}"
+            )
+        self.matches[match_num] = Match(
+            match_num,
+            player1_id,
+            player2_id,
+            winner,
+            score=score,
+            best_of=best_of,
+        )
+
+
+class Match:
+    """A tennis match."""
+
+    def __init__(
+        self,
+        match_num: int,
+        player1_id: int,
+        player2_id: int,
+        winner: int,
+        *,
+        score: str,
+        best_of: int,
+    ):
+        self.match_num = match_num
+        self.player1_id = player1_id
+        self.player2_id = player2_id
+        self.winner = winner
+        self.best_of = best_of
+        self.winner_sets = 0
+        self.loser_sets = 0
+        self.winner_games = 0
+        self.loser_games = 0
+
+        if best_of not in (3, 5):
+            raise DataInconsistencyError(
+                f"Invalid format (best of {best_of}) for match {match_num}"
+            )
+
+        try:
+            for set_score in score.split(" "):
+                tie_break = re.match(r"^\[(.*)\]$", set_score)
+                if tie_break:
+                    winner_pts, loser_pts = map(int, tie_break.group(1).split("-"))
+                    assert winner_pts != loser_pts
+                    if winner_pts > loser_pts:
+                        self.winner_sets += 1
+                    elif winner_pts < loser_pts:
+                        self.loser_sets += 1
+                    else:
+                        raise DataInconsistencyError(
+                            f"Invalid tie break score for match {match_num}: "
+                            f"{set_score}"
+                        )
+                else:
+                    winner_games, loser_games = map(
+                        int, re.sub(r"\(\d+\)", "", set_score).split("-")
+                    )
+                    if winner_games > loser_games:
+                        self.winner_sets += 1
+                    elif winner_games < loser_games:
+                        self.loser_sets += 1
+                    else:
+                        raise DataInconsistencyError(
+                            f"Invalid set score for match {match_num}: {set_score}"
+                        )
+                    self.winner_games += winner_games
+                    self.loser_games += loser_games
+        except ValueError as exc:
+            raise DataInconsistencyError(
+                f"Invalid score format for match {match_num}: {score}"
+            ) from exc
+
+        set_diff = self.winner_sets - self.loser_sets
+        if (
+            set_diff < 1
+            or (best_of == 3 and set_diff > 2)
+            or (best_of == 5 and set_diff > 3)
+        ):
+            warning(
+                f"Match {match_num} has an inconsistent set difference "
+                f"({set_diff}) for a best of {best_of} match with score {score}"
             )

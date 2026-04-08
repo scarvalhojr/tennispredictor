@@ -237,11 +237,6 @@ def load_matches(csv_dir: Path, dataset: TennisDataset) -> None:
             "(expected atp_matches_????.csv)."
         )
 
-    for file in files:
-        load_matches_file(file, dataset)
-
-
-def load_matches_file(file: Path, dataset: TennisDataset) -> None:
     required = {
         "tourney_id",
         "tourney_name",
@@ -251,19 +246,20 @@ def load_matches_file(file: Path, dataset: TennisDataset) -> None:
         "tourney_date",
     }
 
-    info(f"Loading matches from {file}")
-    with file.open(newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
+    for file in files:
+        info(f"Loading matches from {file}")
+        with file.open(newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
 
-        if reader.fieldnames is None:
-            raise SystemExit(f"{file}: CSV has no header row.")
-        missing = required - set(reader.fieldnames)
-        if missing:
-            raise SystemExit(f"{file}: missing columns: {sorted(missing)}")
+            if reader.fieldnames is None:
+                raise SystemExit(f"{file}: CSV has no header row.")
+            missing = required - set(reader.fieldnames)
+            if missing:
+                raise SystemExit(f"{file}: missing columns: {sorted(missing)}")
 
-        for line_no, row in enumerate(reader, start=2):
-            tournament = parse_tournament(dataset, row, line_no)
-            parse_match(dataset, tournament, row, line_no)
+            for line_no, row in enumerate(reader, start=2):
+                tournament = parse_tournament(dataset, row, line_no)
+                parse_match(dataset, tournament, row, line_no)
 
 
 def parse_tournament(
@@ -284,7 +280,8 @@ def parse_tournament(
     tournament_level = parse_tournament_level(row.get("tourney_level"), line_no=line_no)
     if tournament_level is None:
         raise DataInconsistencyError(
-            f"Tournament level is missing or invalid at line number {line_no}"
+            f"Tournament level is missing or invalid for match on "
+            f"{tournament_date} at line number {line_no}"
         )
 
     return dataset.add_tournament(
@@ -304,21 +301,62 @@ def parse_match(
     if not match_num:
         raise DataInconsistencyError(f"Missing match number at line number {line_no}")
 
+    score = parse_string(row.get("score"))
+    if score is None:
+        warning(
+            f"Ignoring match with missing score on "
+            f"{tournament.tournament_date} at line number {line_no}"
+        )
+        return
+
+    best_of_str = row.get("best_of")
+    best_of = parse_integer(best_of_str, line_no=line_no)
+    if best_of not in (3, 5):
+        warning(
+            f"Ignoring match with best of {best_of_str} format on "
+            f"{tournament.tournament_date} at line number {line_no}"
+        )
+        return
+
+    ignore_suffixes = (
+        "RET",
+        "ABD",
+        "DEF",
+        "unfinished",
+        "Default",
+        "Def.",
+        "abandoned",
+        "Walkover",
+        "W/O",
+        "UNK",
+        "NA",
+    )
+    if score.endswith(ignore_suffixes):
+        # Ignore unknown scores, walkovers and retirements
+        return
+
     winner_or_loser = [(1, "winner", "loser"), (2, "loser", "winner")]
-    _winner, prefix1, prefix2 = choice(winner_or_loser)
-    _player1_id = parse_player_data(
+    winner, prefix1, prefix2 = choice(winner_or_loser)
+
+    player1_id = parse_player_data(
         dataset,
         tournament,
         row,
         prefix1,
         line_no=line_no,
     )
-    _player2_id = parse_player_data(
+
+    player2_id = parse_player_data(
         dataset,
         tournament,
         row,
         prefix2,
         line_no=line_no,
+    )
+
+    # TODO: add round, minutes
+    tournament.add_match(
+        match_num, player1_id, player2_id, winner, score=score, best_of=best_of
     )
 
 
@@ -329,7 +367,7 @@ def parse_player_data(
     row: dict[str, str],
     prefix: str,
     line_no: int,
-) -> int | None:
+) -> int:
     player_id_str = row.get(prefix + "_id")
     player_id = parse_integer(player_id_str, line_no=line_no)
     if player_id:
