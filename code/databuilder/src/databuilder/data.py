@@ -100,7 +100,15 @@ class Player:
         self.ranking_history: dict[date, Ranking] = {}
 
     def __str__(self) -> str:
-        return f"{self.first_name} {self.last_name} ({self.player_id})"
+        return f"{self.full_name()} ({self.player_id})"
+
+    def full_name(self) -> str:
+        return " ".join((self.first_name or "", self.last_name or "")).strip()
+
+    def age_at(self, a_date: date) -> float:
+        if self.birth_date is None:
+            return None
+        return round((a_date - self.birth_date).days / 365.25, 2)
 
     def check_match_data(
         self,
@@ -132,10 +140,14 @@ class Player:
                 f"-> {country})"
             )
 
-        if self.birth_date is not None and age is not None:
-            age_gap = age - (tournament.start_date - self.birth_date).days / 365.25
+        age_at_tournament = self.age_at(tournament.start_date)
+        if age_at_tournament is not None and age is not None:
+            age_gap = age - age_at_tournament
             if abs(age_gap) > 0.2:
-                warning(f"Ignoring age mismatch for {self} ({age_gap:.1f} years)")
+                warning(
+                    f"Ignoring age mismatch for {self} at {tournament.level} match on "
+                    f"{tournament.start_date} ({age_gap:.1f} years)"
+                )
 
         ranking = self.get_ranking(tournament.start_date)
         rank_at_tournament = ranking.position if ranking else None
@@ -371,3 +383,6 @@ class Match:
                 f"Match {match_num} has an inconsistent set difference "
                 f"({set_diff}) for a best of {best_of} match with score {score}"
             )
+
+    def __str__(self) -> str:
+        return f"{self.match_num} {self.player1_id} vs {self.player2_id}"
