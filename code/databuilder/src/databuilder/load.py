@@ -14,6 +14,7 @@ from .data import DataInconsistencyError, Player, TennisDataset, Tournament
 from .enums import Hand, Surface, TournamentLevel
 
 
+# TODO: make all functions that are not needed externally private
 def parse_string(s: str | None) -> str | None:
     return (s or "").strip() or None
 
@@ -226,6 +227,7 @@ def load_rankings_file(file: Path, dataset: TennisDataset) -> None:
 
 
 def load_matches(csv_dir: Path, dataset: TennisDataset) -> None:
+    # TODO: load matches from Qualifying rounds and Challenger events
     # Match files from the main ATP tour events are named atp_matches_????.csv
     files = sorted(csv_dir.glob("atp_matches_????.csv"))
 

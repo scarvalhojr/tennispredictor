@@ -9,9 +9,9 @@ import argparse
 from logging import DEBUG, INFO, basicConfig, error
 from pathlib import Path
 
-
 from .data import DataInconsistencyError, TennisDataset
-from .load import load_players, load_rankings, load_matches
+from .export import export_matches
+from .load import load_matches, load_players, load_rankings
 
 
 def parse_args():
@@ -47,7 +47,7 @@ def main() -> None:
 
     args = parse_args()
     csv_dir: Path = args.csv_dir
-    # dataset_file: Path = args.dataset_file
+    dataset_file: Path = args.dataset_file
 
     # Setup logging
     if args.debug:
@@ -62,6 +62,7 @@ def main() -> None:
         load_players(csv_dir, dataset)
         load_rankings(csv_dir, dataset)
         load_matches(csv_dir, dataset)
+        export_matches(dataset, dataset_file)
     except DataInconsistencyError as exc:
         error(exc)
         raise SystemExit(1) from exc
