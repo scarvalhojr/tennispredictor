@@ -12,6 +12,7 @@ from typing import Any
 
 from .data import DataInconsistencyError, Match, TennisDataset, Tournament
 from .enums import TournamentLevel
+from .process import iter_matches
 
 
 def export_matches(dataset: TennisDataset, path: Path) -> None:
@@ -32,6 +33,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "surface",
         "draw_size",
         "match_num",
+        "best_of",
         "player1_id",
         "player1_name",
         "player1_hand",
@@ -47,7 +49,6 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_rank",
         "player2_points",
         "winner",
-        "best_of",
     )
 
     levels = {
@@ -57,22 +58,13 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         TournamentLevel.MASTERS_1000,
     }
 
-    tournaments = [t for t in dataset.tournaments.values() if t.level in levels]
-
-    tournaments.sort(key=lambda t: (t.start_date, t.tournament_id))
-
     count = 0
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        for tournament in tournaments:
-            matches = sorted(
-                tournament.matches.values(),
-                key=lambda m: m.match_num,
-            )
-            for match in matches:
-                writer.writerow(_match_row(dataset, tournament, match))
-            count += len(matches)
+        for tournament, match in iter_matches(dataset, tournament_levels=levels):
+            writer.writerow(_match_row(dataset, tournament, match))
+            count += 1
 
     info(f"Exported {count} matches to {path}")
 
@@ -119,6 +111,7 @@ def _match_row(
         "surface": tournament.surface,
         "draw_size": tournament.draw_size,
         "match_num": match.match_num,
+        "best_of": match.best_of,
         "player1_id": match.player1_id,
         "player1_name": player1.full_name(),
         "player1_hand": _to_string(player1.hand),
@@ -134,5 +127,4 @@ def _match_row(
         "player2_rank": player2_rank,
         "player2_points": player2_points,
         "winner": match.winner,
-        "best_of": match.best_of,
     }
