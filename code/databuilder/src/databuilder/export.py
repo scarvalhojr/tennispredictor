@@ -5,14 +5,59 @@ Export dataset structures to flat files.
 from __future__ import annotations
 
 import csv
+from collections import defaultdict
 from datetime import date
 from logging import info
 from pathlib import Path
 from typing import Any
 
-from .data import DataInconsistencyError, Match, TennisDataset, Tournament
-from .enums import TournamentLevel
+from .data import DataInconsistencyError, Match, Player, TennisDataset, Tournament
+from .enums import Surface, TournamentLevel
 from .process import iter_matches
+
+
+class Stats:
+    """
+    Statistics about the dataset.
+    """
+
+    def __init__(self):
+        self.total_matches = 0
+        self.head2head_wins: defaultdict[tuple[int, int], int] = defaultdict(lambda: 0)
+        self.head2head_surface_wins: defaultdict[tuple[int, int, Surface], int] = (
+            defaultdict(lambda: 0)
+        )
+
+    def add_match(self, tournament: Tournament, match: Match):
+        self.total_matches += 1
+        player1_id = match.player1_id
+        player2_id = match.player2_id
+        if match.winner == 1:
+            self.head2head_wins[(player1_id, player2_id)] += 1
+            if tournament.surface is not None:
+                self.head2head_surface_wins[
+                    (player1_id, player2_id, tournament.surface)
+                ] += 1
+        elif match.winner == 2:
+            self.head2head_wins[(player2_id, player1_id)] += 1
+            if tournament.surface is not None:
+                self.head2head_surface_wins[
+                    (player2_id, player1_id, tournament.surface)
+                ] += 1
+        else:
+            raise DataInconsistencyError(
+                f"Invalid winner '{match.winner}' for match {match} at {tournament}"
+            )
+
+    def get_head2head_wins(self, player1_id: int, player2_id: int) -> int:
+        return self.head2head_wins[(player1_id, player2_id)]
+
+    def get_head2head_surface_wins(
+        self, player1_id: int, player2_id: int, surface: Surface | None
+    ) -> int | None:
+        if surface is None:
+            return None
+        return self.head2head_surface_wins[(player1_id, player2_id, surface)]
 
 
 def export_matches(dataset: TennisDataset, path: Path) -> None:
@@ -26,6 +71,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     fieldnames = (
+        "year",
         "tournament_id",
         "tournament_start_date",
         "tournament_name",
@@ -41,6 +87,8 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_age",
         "player1_rank",
         "player1_points",
+        "player1_head2head_wins",
+        "player1_head2head_surface_wins",
         "player2_id",
         "player2_name",
         "player2_hand",
@@ -48,25 +96,30 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_age",
         "player2_rank",
         "player2_points",
+        "player2_head2head_wins",
+        "player2_head2head_surface_wins",
         "winner",
     )
 
+    # Ignore NextGen Finals as they use a different format
     levels = {
         TournamentLevel.ATP,
+        TournamentLevel.DAVIS_CUP,
         TournamentLevel.FINALS,
         TournamentLevel.GRAND_SLAM,
         TournamentLevel.MASTERS_1000,
+        TournamentLevel.OLYMPICS,
     }
 
-    count = 0
+    stats = Stats()
+
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for tournament, match in iter_matches(dataset, tournament_levels=levels):
-            writer.writerow(_match_row(dataset, tournament, match))
-            count += 1
+            writer.writerow(_match_row(dataset, tournament, match, stats))
 
-    info(f"Exported {count} matches to {path}")
+    info(f"Exported {stats.total_matches} matches to {path}")
 
 
 def _to_string(value: Any | None) -> str:
@@ -77,8 +130,15 @@ def _format_date(a_date: date | None) -> str:
     return a_date.strftime("%Y-%m-%d") if a_date else ""
 
 
+def _get_ranking(player: Player, match_date: date) -> tuple[int | None, int | None]:
+    ranking = player.get_ranking(match_date)
+    if ranking is not None:
+        return ranking.position, ranking.points
+    return None, None
+
+
 def _match_row(
-    dataset: TennisDataset, tournament: Tournament, match: Match
+    dataset: TennisDataset, tournament: Tournament, match: Match, stats: Stats
 ) -> dict[str, str | int | float | None]:
     player1 = dataset.get_player(match.player1_id)
     player2 = dataset.get_player(match.player2_id)
@@ -87,23 +147,28 @@ def _match_row(
             f"Player data not found for match {match} at {tournament}"
         )
 
-    player1_ranking = player1.get_ranking(tournament.start_date)
-    if player1_ranking is not None:
-        player1_rank = player1_ranking.position
-        player1_points = player1_ranking.points
-    else:
-        player1_rank = None
-        player1_points = None
+    player1_rank, player1_points = _get_ranking(player1, tournament.start_date)
+    player2_rank, player2_points = _get_ranking(player2, tournament.start_date)
 
-    player2_ranking = player2.get_ranking(tournament.start_date)
-    if player2_ranking is not None:
-        player2_rank = player2_ranking.position
-        player2_points = player2_ranking.points
-    else:
-        player2_rank = None
-        player2_points = None
+    player1_head2head_wins = stats.get_head2head_wins(
+        match.player1_id, match.player2_id
+    )
+    player2_head2head_wins = stats.get_head2head_wins(
+        match.player2_id, match.player1_id
+    )
+
+    player1_head2head_surface_wins = stats.get_head2head_surface_wins(
+        match.player1_id, match.player2_id, tournament.surface
+    )
+    player2_head2head_surface_wins = stats.get_head2head_surface_wins(
+        match.player2_id, match.player1_id, tournament.surface
+    )
+
+    # Update stats after getting the values for the current match
+    stats.add_match(tournament, match)
 
     return {
+        "year": tournament.start_date.year,
         "tournament_id": tournament.tournament_id,
         "tournament_start_date": _format_date(tournament.start_date),
         "tournament_name": tournament.name,
@@ -119,6 +184,8 @@ def _match_row(
         "player1_age": player1.age_at(tournament.start_date),
         "player1_rank": player1_rank,
         "player1_points": player1_points,
+        "player1_head2head_wins": player1_head2head_wins,
+        "player1_head2head_surface_wins": player1_head2head_surface_wins,
         "player2_id": match.player2_id,
         "player2_name": player2.full_name(),
         "player2_hand": _to_string(player2.hand),
@@ -126,5 +193,7 @@ def _match_row(
         "player2_age": player2.age_at(tournament.start_date),
         "player2_rank": player2_rank,
         "player2_points": player2_points,
+        "player2_head2head_wins": player2_head2head_wins,
+        "player2_head2head_surface_wins": player2_head2head_surface_wins,
         "winner": match.winner,
     }
