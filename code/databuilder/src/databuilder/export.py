@@ -23,6 +23,7 @@ class Stats:
 
     def __init__(self):
         self.total_matches = 0
+        self.highest_rank: dict[int, int] = {}
         self.head2head_wins: defaultdict[tuple[int, int], int] = defaultdict(lambda: 0)
         self.head2head_surface_wins: defaultdict[tuple[int, int, Surface], int] = (
             defaultdict(lambda: 0)
@@ -32,6 +33,7 @@ class Stats:
         self.total_matches += 1
         player1_id = match.player1_id
         player2_id = match.player2_id
+
         if match.winner == 1:
             self.head2head_wins[(player1_id, player2_id)] += 1
             if tournament.surface is not None:
@@ -48,6 +50,15 @@ class Stats:
             raise DataInconsistencyError(
                 f"Invalid winner '{match.winner}' for match {match} at {tournament}"
             )
+
+    def update_highest_rank(self, player_id: int, rank: int | None):
+        if rank is None:
+            return
+        if player_id not in self.highest_rank or self.highest_rank[player_id] > rank:
+            self.highest_rank[player_id] = rank
+
+    def get_highest_rank(self, player_id: int) -> int | None:
+        return self.highest_rank.get(player_id)
 
     def get_head2head_wins(self, player1_id: int, player2_id: int) -> int:
         return self.head2head_wins[(player1_id, player2_id)]
@@ -87,6 +98,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_age",
         "player1_rank",
         "player1_points",
+        "player1_highest_rank",
         "player1_head2head_wins",
         "player1_head2head_surface_wins",
         "player2_id",
@@ -96,6 +108,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_age",
         "player2_rank",
         "player2_points",
+        "player2_highest_rank",
         "player2_head2head_wins",
         "player2_head2head_surface_wins",
         "winner",
@@ -150,6 +163,9 @@ def _match_row(
     player1_rank, player1_points = _get_ranking(player1, tournament.start_date)
     player2_rank, player2_points = _get_ranking(player2, tournament.start_date)
 
+    stats.update_highest_rank(match.player1_id, player1_rank)
+    stats.update_highest_rank(match.player2_id, player2_rank)
+
     player1_head2head_wins = stats.get_head2head_wins(
         match.player1_id, match.player2_id
     )
@@ -184,6 +200,7 @@ def _match_row(
         "player1_age": player1.age_at(tournament.start_date),
         "player1_rank": player1_rank,
         "player1_points": player1_points,
+        "player1_highest_rank": stats.get_highest_rank(match.player1_id),
         "player1_head2head_wins": player1_head2head_wins,
         "player1_head2head_surface_wins": player1_head2head_surface_wins,
         "player2_id": match.player2_id,
@@ -193,6 +210,7 @@ def _match_row(
         "player2_age": player2.age_at(tournament.start_date),
         "player2_rank": player2_rank,
         "player2_points": player2_points,
+        "player2_highest_rank": stats.get_highest_rank(match.player2_id),
         "player2_head2head_wins": player2_head2head_wins,
         "player2_head2head_surface_wins": player2_head2head_surface_wins,
         "winner": match.winner,
