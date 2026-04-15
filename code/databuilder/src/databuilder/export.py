@@ -24,6 +24,8 @@ class Stats:
     def __init__(self):
         self.total_matches = 0
         self.highest_rank: dict[int, int] = {}
+        self.total_wins: defaultdict[int, int] = defaultdict(lambda: 0)
+        self.total_losses: defaultdict[int, int] = defaultdict(lambda: 0)
         self.head2head_wins: defaultdict[tuple[int, int], int] = defaultdict(lambda: 0)
         self.head2head_surface_wins: defaultdict[tuple[int, int, Surface], int] = (
             defaultdict(lambda: 0)
@@ -35,12 +37,16 @@ class Stats:
         player2_id = match.player2_id
 
         if match.winner == 1:
+            self.total_wins[player1_id] += 1
+            self.total_losses[player2_id] += 1
             self.head2head_wins[(player1_id, player2_id)] += 1
             if tournament.surface is not None:
                 self.head2head_surface_wins[
                     (player1_id, player2_id, tournament.surface)
                 ] += 1
         elif match.winner == 2:
+            self.total_wins[player2_id] += 1
+            self.total_losses[player1_id] += 1
             self.head2head_wins[(player2_id, player1_id)] += 1
             if tournament.surface is not None:
                 self.head2head_surface_wins[
@@ -59,6 +65,15 @@ class Stats:
 
     def get_highest_rank(self, player_id: int) -> int | None:
         return self.highest_rank.get(player_id)
+
+    def get_total_matches(self, player_id: int) -> int | None:
+        return self.total_wins[player_id] + self.total_losses[player_id]
+
+    def get_win_rate(self, player_id: int) -> float | None:
+        total_matches = self.get_total_matches(player_id)
+        if total_matches == 0:
+            return None
+        return self.total_wins[player_id] / total_matches
 
     def get_head2head_wins(self, player1_id: int, player2_id: int) -> int:
         return self.head2head_wins[(player1_id, player2_id)]
@@ -99,6 +114,8 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_rank",
         "player1_points",
         "player1_highest_rank",
+        "player1_total_matches",
+        "player1_win_rate",
         "player1_head2head_wins",
         "player1_head2head_surface_wins",
         "player2_id",
@@ -109,6 +126,8 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_rank",
         "player2_points",
         "player2_highest_rank",
+        "player2_total_matches",
+        "player2_win_rate",
         "player2_head2head_wins",
         "player2_head2head_surface_wins",
         "winner",
@@ -163,6 +182,7 @@ def _match_row(
     player1_rank, player1_points = _get_ranking(player1, tournament.start_date)
     player2_rank, player2_points = _get_ranking(player2, tournament.start_date)
 
+    # Update highest rank before outputting the values for the current match
     stats.update_highest_rank(match.player1_id, player1_rank)
     stats.update_highest_rank(match.player2_id, player2_rank)
 
@@ -180,10 +200,7 @@ def _match_row(
         match.player2_id, match.player1_id, tournament.surface
     )
 
-    # Update stats after getting the values for the current match
-    stats.add_match(tournament, match)
-
-    return {
+    row = {
         "year": tournament.start_date.year,
         "tournament_id": tournament.tournament_id,
         "tournament_start_date": _format_date(tournament.start_date),
@@ -201,6 +218,8 @@ def _match_row(
         "player1_rank": player1_rank,
         "player1_points": player1_points,
         "player1_highest_rank": stats.get_highest_rank(match.player1_id),
+        "player1_total_matches": stats.get_total_matches(match.player1_id),
+        "player1_win_rate": stats.get_win_rate(match.player1_id),
         "player1_head2head_wins": player1_head2head_wins,
         "player1_head2head_surface_wins": player1_head2head_surface_wins,
         "player2_id": match.player2_id,
@@ -211,7 +230,14 @@ def _match_row(
         "player2_rank": player2_rank,
         "player2_points": player2_points,
         "player2_highest_rank": stats.get_highest_rank(match.player2_id),
+        "player2_total_matches": stats.get_total_matches(match.player2_id),
+        "player2_win_rate": stats.get_win_rate(match.player2_id),
         "player2_head2head_wins": player2_head2head_wins,
         "player2_head2head_surface_wins": player2_head2head_surface_wins,
         "winner": match.winner,
     }
+
+    # Update stats after getting the values for the current match
+    stats.add_match(tournament, match)
+
+    return row
