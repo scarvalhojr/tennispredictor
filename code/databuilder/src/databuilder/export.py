@@ -28,6 +28,12 @@ class Stats:
         self.highest_rank: dict[int, int] = {}
         self.total_wins: defaultdict[int, int] = defaultdict(lambda: 0)
         self.total_losses: defaultdict[int, int] = defaultdict(lambda: 0)
+        self.total_surface_wins: defaultdict[tuple[int, Surface], int] = defaultdict(
+            lambda: 0
+        )
+        self.total_surface_losses: defaultdict[tuple[int, Surface], int] = defaultdict(
+            lambda: 0
+        )
         self.head2head_wins: defaultdict[tuple[int, int], int] = defaultdict(lambda: 0)
         self.head2head_surface_wins: defaultdict[tuple[int, int, Surface], int] = (
             defaultdict(lambda: 0)
@@ -35,34 +41,36 @@ class Stats:
         self.elo_rating: defaultdict[int, float] = defaultdict(
             lambda: self.INITIAL_ELO_RATING
         )
+        self.surface_elo_rating: defaultdict[tuple[int, Surface], float] = defaultdict(
+            lambda: self.INITIAL_ELO_RATING
+        )
 
     def add_match(self, tournament: Tournament, match: Match):
         self.total_matches += 1
-        player1_id = match.player1_id
-        player2_id = match.player2_id
 
         if match.winner == 1:
-            self.total_wins[player1_id] += 1
-            self.total_losses[player2_id] += 1
-            self.head2head_wins[(player1_id, player2_id)] += 1
-            if tournament.surface is not None:
-                self.head2head_surface_wins[
-                    (player1_id, player2_id, tournament.surface)
-                ] += 1
+            winner_id = match.player1_id
+            loser_id = match.player2_id
         elif match.winner == 2:
-            self.total_wins[player2_id] += 1
-            self.total_losses[player1_id] += 1
-            self.head2head_wins[(player2_id, player1_id)] += 1
-            if tournament.surface is not None:
-                self.head2head_surface_wins[
-                    (player2_id, player1_id, tournament.surface)
-                ] += 1
+            winner_id = match.player2_id
+            loser_id = match.player1_id
         else:
             raise DataInconsistencyError(
                 f"Invalid winner '{match.winner}' for match {match} at {tournament}"
             )
 
+        self.total_wins[winner_id] += 1
+        self.total_losses[loser_id] += 1
+        self.head2head_wins[(winner_id, loser_id)] += 1
         self._update_elo(match.player1_id, match.player2_id, match.winner)
+
+        if tournament.surface is not None:
+            self.total_surface_wins[(winner_id, tournament.surface)] += 1
+            self.total_surface_losses[(loser_id, tournament.surface)] += 1
+            self.head2head_surface_wins[(winner_id, loser_id, tournament.surface)] += 1
+            self._update_surface_elo(
+                match.player1_id, match.player2_id, tournament.surface, match.winner
+            )
 
     def _update_elo(self, player1_id: int, player2_id: int, winner: int):
         p1_elo = self.elo_rating[player1_id]
@@ -73,6 +81,22 @@ class Stats:
 
         self.elo_rating[player1_id] = self._new_elo(p1_elo, p2_elo, p1_matches, p1_win)
         self.elo_rating[player2_id] = self._new_elo(p2_elo, p1_elo, p2_matches, p2_win)
+
+    def _update_surface_elo(
+        self, player1_id: int, player2_id: int, surface: Surface, winner: int
+    ):
+        p1_elo = self.surface_elo_rating[(player1_id, surface)]
+        p2_elo = self.surface_elo_rating[(player2_id, surface)]
+        p1_matches = self.get_total_surface_matches(player1_id, surface)
+        p2_matches = self.get_total_surface_matches(player2_id, surface)
+        p1_win, p2_win = (1, 0) if winner == 1 else (0, 1)
+
+        self.surface_elo_rating[(player1_id, surface)] = self._new_elo(
+            p1_elo, p2_elo, p1_matches, p1_win
+        )
+        self.surface_elo_rating[(player2_id, surface)] = self._new_elo(
+            p2_elo, p1_elo, p2_matches, p2_win
+        )
 
     def _new_elo(
         self,
@@ -101,11 +125,23 @@ class Stats:
     def get_total_matches(self, player_id: int) -> int:
         return self.total_wins[player_id] + self.total_losses[player_id]
 
+    def get_total_surface_matches(self, player_id: int, surface: Surface) -> int:
+        return (
+            self.total_surface_wins[(player_id, surface)]
+            + self.total_surface_losses[(player_id, surface)]
+        )
+
     def get_win_rate(self, player_id: int) -> float | None:
         total_matches = self.get_total_matches(player_id)
         if total_matches == 0:
             return None
         return self.total_wins[player_id] / total_matches
+
+    def get_surface_win_rate(self, player_id: int, surface: Surface) -> float | None:
+        total_matches = self.get_total_surface_matches(player_id, surface)
+        if total_matches == 0:
+            return None
+        return self.total_surface_wins[(player_id, surface)] / total_matches
 
     def get_head2head_wins(self, player1_id: int, player2_id: int) -> int:
         return self.head2head_wins[(player1_id, player2_id)]
@@ -119,6 +155,9 @@ class Stats:
 
     def get_elo_rating(self, player_id: int) -> float | None:
         return self.elo_rating[player_id]
+
+    def get_surface_elo_rating(self, player_id: int, surface: Surface) -> float | None:
+        return self.surface_elo_rating[(player_id, surface)]
 
 
 def export_matches(dataset: TennisDataset, path: Path) -> None:
@@ -151,9 +190,12 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_highest_rank",
         "player1_total_matches",
         "player1_win_rate",
+        "player1_surface_matches",
+        "player1_surface_win_rate",
         "player1_head2head_wins",
         "player1_head2head_surface_wins",
-        "player1_elo_rating",
+        "player1_elo",
+        "player1_surface_elo",
         "player2_id",
         "player2_name",
         "player2_hand",
@@ -164,9 +206,12 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_highest_rank",
         "player2_total_matches",
         "player2_win_rate",
+        "player2_surface_matches",
+        "player2_surface_win_rate",
         "player2_head2head_wins",
         "player2_head2head_surface_wins",
-        "player2_elo_rating",
+        "player2_elo",
+        "player2_surface_elo",
         "winner",
     )
 
@@ -257,9 +302,18 @@ def _match_row(
         "player1_highest_rank": stats.get_highest_rank(match.player1_id),
         "player1_total_matches": stats.get_total_matches(match.player1_id),
         "player1_win_rate": stats.get_win_rate(match.player1_id),
+        "player1_surface_matches": stats.get_total_surface_matches(
+            match.player1_id, tournament.surface
+        ),
+        "player1_surface_win_rate": stats.get_surface_win_rate(
+            match.player1_id, tournament.surface
+        ),
         "player1_head2head_wins": player1_head2head_wins,
         "player1_head2head_surface_wins": player1_head2head_surface_wins,
-        "player1_elo_rating": stats.get_elo_rating(match.player1_id),
+        "player1_elo": stats.get_elo_rating(match.player1_id),
+        "player1_surface_elo": stats.get_surface_elo_rating(
+            match.player1_id, tournament.surface
+        ),
         "player2_id": match.player2_id,
         "player2_name": player2.full_name(),
         "player2_hand": _to_string(player2.hand),
@@ -270,9 +324,18 @@ def _match_row(
         "player2_highest_rank": stats.get_highest_rank(match.player2_id),
         "player2_total_matches": stats.get_total_matches(match.player2_id),
         "player2_win_rate": stats.get_win_rate(match.player2_id),
+        "player2_surface_matches": stats.get_total_surface_matches(
+            match.player2_id, tournament.surface
+        ),
+        "player2_surface_win_rate": stats.get_surface_win_rate(
+            match.player2_id, tournament.surface
+        ),
         "player2_head2head_wins": player2_head2head_wins,
         "player2_head2head_surface_wins": player2_head2head_surface_wins,
-        "player2_elo_rating": stats.get_elo_rating(match.player2_id),
+        "player2_elo": stats.get_elo_rating(match.player2_id),
+        "player2_surface_elo": stats.get_surface_elo_rating(
+            match.player2_id, tournament.surface
+        ),
         "winner": match.winner,
     }
 
