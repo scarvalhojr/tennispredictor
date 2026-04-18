@@ -21,6 +21,8 @@ class Stats:
     Statistics about the dataset.
     """
 
+    INITIAL_ELO_RATING = 1500
+
     def __init__(self):
         self.total_matches = 0
         self.highest_rank: dict[int, int] = {}
@@ -29,6 +31,9 @@ class Stats:
         self.head2head_wins: defaultdict[tuple[int, int], int] = defaultdict(lambda: 0)
         self.head2head_surface_wins: defaultdict[tuple[int, int, Surface], int] = (
             defaultdict(lambda: 0)
+        )
+        self.elo_rating: defaultdict[int, float] = defaultdict(
+            lambda: self.INITIAL_ELO_RATING
         )
 
     def add_match(self, tournament: Tournament, match: Match):
@@ -57,6 +62,33 @@ class Stats:
                 f"Invalid winner '{match.winner}' for match {match} at {tournament}"
             )
 
+        self._update_elo(match.player1_id, match.player2_id, match.winner)
+
+    def _update_elo(self, player1_id: int, player2_id: int, winner: int):
+        p1_elo = self.elo_rating[player1_id]
+        p2_elo = self.elo_rating[player2_id]
+        p1_matches = self.get_total_matches(player1_id)
+        p2_matches = self.get_total_matches(player2_id)
+        p1_win, p2_win = (1, 0) if winner == 1 else (0, 1)
+
+        self.elo_rating[player1_id] = self._new_elo(p1_elo, p2_elo, p1_matches, p1_win)
+        self.elo_rating[player2_id] = self._new_elo(p2_elo, p1_elo, p2_matches, p2_win)
+
+    def _new_elo(
+        self,
+        player_elo: float,
+        opponent_elo: float,
+        num_matches: int,
+        winner_indicator: float,
+    ) -> float:
+        expected = 1 / (1 + 10 ** ((opponent_elo - player_elo) / 400))
+
+        # The increment is based on the number of matches the player has played,
+        # according to a formula suggested by Kovalchik in a paper from 2016
+        increment = 250 / (num_matches + 5) ** 0.4
+
+        return player_elo + increment * (winner_indicator - expected)
+
     def update_highest_rank(self, player_id: int, rank: int | None):
         if rank is None:
             return
@@ -66,7 +98,7 @@ class Stats:
     def get_highest_rank(self, player_id: int) -> int | None:
         return self.highest_rank.get(player_id)
 
-    def get_total_matches(self, player_id: int) -> int | None:
+    def get_total_matches(self, player_id: int) -> int:
         return self.total_wins[player_id] + self.total_losses[player_id]
 
     def get_win_rate(self, player_id: int) -> float | None:
@@ -84,6 +116,9 @@ class Stats:
         if surface is None:
             return None
         return self.head2head_surface_wins[(player1_id, player2_id, surface)]
+
+    def get_elo_rating(self, player_id: int) -> float | None:
+        return self.elo_rating[player_id]
 
 
 def export_matches(dataset: TennisDataset, path: Path) -> None:
@@ -118,6 +153,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_win_rate",
         "player1_head2head_wins",
         "player1_head2head_surface_wins",
+        "player1_elo_rating",
         "player2_id",
         "player2_name",
         "player2_hand",
@@ -130,6 +166,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_win_rate",
         "player2_head2head_wins",
         "player2_head2head_surface_wins",
+        "player2_elo_rating",
         "winner",
     )
 
@@ -222,6 +259,7 @@ def _match_row(
         "player1_win_rate": stats.get_win_rate(match.player1_id),
         "player1_head2head_wins": player1_head2head_wins,
         "player1_head2head_surface_wins": player1_head2head_surface_wins,
+        "player1_elo_rating": stats.get_elo_rating(match.player1_id),
         "player2_id": match.player2_id,
         "player2_name": player2.full_name(),
         "player2_hand": _to_string(player2.hand),
@@ -234,6 +272,7 @@ def _match_row(
         "player2_win_rate": stats.get_win_rate(match.player2_id),
         "player2_head2head_wins": player2_head2head_wins,
         "player2_head2head_surface_wins": player2_head2head_surface_wins,
+        "player2_elo_rating": stats.get_elo_rating(match.player2_id),
         "winner": match.winner,
     }
 
