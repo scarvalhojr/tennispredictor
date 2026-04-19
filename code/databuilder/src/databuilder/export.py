@@ -38,10 +38,14 @@ class Stats:
         self.head2head_surface_wins: defaultdict[tuple[int, int, Surface], int] = (
             defaultdict(lambda: 0)
         )
-        self.elo_rating: defaultdict[int, float] = defaultdict(
+        self.elo: defaultdict[int, float] = defaultdict(lambda: self.INITIAL_ELO_RATING)
+        self.welo: defaultdict[int, float] = defaultdict(
             lambda: self.INITIAL_ELO_RATING
         )
-        self.surface_elo_rating: defaultdict[tuple[int, Surface], float] = defaultdict(
+        self.surface_elo: defaultdict[tuple[int, Surface], float] = defaultdict(
+            lambda: self.INITIAL_ELO_RATING
+        )
+        self.surface_welo: defaultdict[tuple[int, Surface], float] = defaultdict(
             lambda: self.INITIAL_ELO_RATING
         )
 
@@ -62,41 +66,80 @@ class Stats:
         self.total_wins[winner_id] += 1
         self.total_losses[loser_id] += 1
         self.head2head_wins[(winner_id, loser_id)] += 1
-        self._update_elo(match.player1_id, match.player2_id, match.winner)
+        self._update_elos(match)
 
         if tournament.surface is not None:
             self.total_surface_wins[(winner_id, tournament.surface)] += 1
             self.total_surface_losses[(loser_id, tournament.surface)] += 1
             self.head2head_surface_wins[(winner_id, loser_id, tournament.surface)] += 1
-            self._update_surface_elo(
-                match.player1_id, match.player2_id, tournament.surface, match.winner
-            )
+            self._update_surface_elos(match, tournament.surface)
 
-    def _update_elo(self, player1_id: int, player2_id: int, winner: int):
-        p1_elo = self.elo_rating[player1_id]
-        p2_elo = self.elo_rating[player2_id]
-        p1_matches = self.get_total_matches(player1_id)
-        p2_matches = self.get_total_matches(player2_id)
-        p1_win, p2_win = (1, 0) if winner == 1 else (0, 1)
+    def _update_elos(self, match: Match):
+        p1_id = match.player1_id
+        p2_id = match.player2_id
 
-        self.elo_rating[player1_id] = self._new_elo(p1_elo, p2_elo, p1_matches, p1_win)
-        self.elo_rating[player2_id] = self._new_elo(p2_elo, p1_elo, p2_matches, p2_win)
+        p1_win, p2_win = self._winner_indicators(match)
+        games_ratio = self._games_ratio(match)
 
-    def _update_surface_elo(
-        self, player1_id: int, player2_id: int, surface: Surface, winner: int
-    ):
-        p1_elo = self.surface_elo_rating[(player1_id, surface)]
-        p2_elo = self.surface_elo_rating[(player2_id, surface)]
-        p1_matches = self.get_total_surface_matches(player1_id, surface)
-        p2_matches = self.get_total_surface_matches(player2_id, surface)
-        p1_win, p2_win = (1, 0) if winner == 1 else (0, 1)
+        p1_matches = self.get_total_matches(p1_id)
+        p2_matches = self.get_total_matches(p2_id)
 
-        self.surface_elo_rating[(player1_id, surface)] = self._new_elo(
+        p1_elo = self.elo[p1_id]
+        p2_elo = self.elo[p2_id]
+        self.elo[p1_id] = self._new_elo(p1_elo, p2_elo, p1_matches, p1_win)
+        self.elo[p2_id] = self._new_elo(p2_elo, p1_elo, p2_matches, p2_win)
+
+        p1_welo = self.welo[p1_id]
+        p2_welo = self.welo[p2_id]
+        self.welo[p1_id] = self._new_welo(
+            p1_welo, p2_welo, p1_matches, p1_win, games_ratio=games_ratio
+        )
+        self.welo[p2_id] = self._new_welo(
+            p2_welo, p1_welo, p2_matches, p2_win, games_ratio=games_ratio
+        )
+
+    def _update_surface_elos(self, match: Match, surface: Surface):
+        p1_id = match.player1_id
+        p2_id = match.player2_id
+
+        p1_win, p2_win = self._winner_indicators(match)
+        games_ratio = self._games_ratio(match)
+
+        p1_matches = self.get_total_surface_matches(p1_id, surface)
+        p2_matches = self.get_total_surface_matches(p2_id, surface)
+
+        p1_elo = self.surface_elo[(p1_id, surface)]
+        p2_elo = self.surface_elo[(p2_id, surface)]
+        self.surface_elo[(p1_id, surface)] = self._new_elo(
             p1_elo, p2_elo, p1_matches, p1_win
         )
-        self.surface_elo_rating[(player2_id, surface)] = self._new_elo(
+        self.surface_elo[(p2_id, surface)] = self._new_elo(
             p2_elo, p1_elo, p2_matches, p2_win
         )
+
+        p1_welo = self.surface_welo[(p1_id, surface)]
+        p2_welo = self.surface_welo[(p2_id, surface)]
+        self.surface_welo[(p1_id, surface)] = self._new_welo(
+            p1_welo, p2_welo, p1_matches, p1_win, games_ratio=games_ratio
+        )
+        self.surface_welo[(p2_id, surface)] = self._new_welo(
+            p2_welo, p1_welo, p2_matches, p2_win, games_ratio=games_ratio
+        )
+
+    def _winner_indicators(self, match: Match) -> tuple[float, float]:
+        if match.winner == 1:
+            p1_win, p2_win = (1, 0)
+        elif match.winner == 2:
+            p1_win, p2_win = (0, 1)
+        else:
+            raise DataInconsistencyError(
+                f"Invalid winner '{match.winner}' for match {match}"
+            )
+
+        return p1_win, p2_win
+
+    def _games_ratio(self, match: Match) -> float:
+        return match.winner_games / (match.winner_games + match.loser_games)
 
     def _new_elo(
         self,
@@ -105,13 +148,34 @@ class Stats:
         num_matches: int,
         winner_indicator: float,
     ) -> float:
-        expected = 1 / (1 + 10 ** ((opponent_elo - player_elo) / 400))
+        win_prob = self._win_probability(player_elo, opponent_elo)
+        scale_factor = self._scale_factor(num_matches)
 
-        # The increment is based on the number of matches the player has played,
-        # according to a formula suggested by Kovalchik in a paper from 2016
-        increment = 250 / (num_matches + 5) ** 0.4
+        return player_elo + scale_factor * (winner_indicator - win_prob)
 
-        return player_elo + increment * (winner_indicator - expected)
+    def _new_welo(
+        self,
+        player_welo: float,
+        opponent_welo: float,
+        num_matches: int,
+        winner_indicator: float,
+        *,
+        games_ratio: float,
+    ) -> float:
+        win_prob = self._win_probability(player_welo, opponent_welo)
+        scale_factor = self._scale_factor(num_matches)
+
+        return player_welo + scale_factor * (winner_indicator - win_prob) * games_ratio
+
+    def _win_probability(self, player_elo: float, opponent_elo: float) -> float:
+        return 1 / (1 + 10 ** ((opponent_elo - player_elo) / 400))
+
+    def _scale_factor(self, num_matches: int) -> float:
+        """
+        The scale factor is based on the number of matches the player has played,
+        according to a formula suggested by Kovalchik in a paper from 2016
+        """
+        return 250 / (num_matches + 5) ** 0.4
 
     def update_highest_rank(self, player_id: int, rank: int | None):
         if rank is None:
@@ -153,11 +217,17 @@ class Stats:
             return None
         return self.head2head_surface_wins[(player1_id, player2_id, surface)]
 
-    def get_elo_rating(self, player_id: int) -> float | None:
-        return self.elo_rating[player_id]
+    def get_elo(self, player_id: int) -> float:
+        return self.elo[player_id]
 
-    def get_surface_elo_rating(self, player_id: int, surface: Surface) -> float | None:
-        return self.surface_elo_rating[(player_id, surface)]
+    def get_welo(self, player_id: int) -> float:
+        return self.welo[player_id]
+
+    def get_surface_elo(self, player_id: int, surface: Surface) -> float:
+        return self.surface_elo[(player_id, surface)]
+
+    def get_surface_welo(self, player_id: int, surface: Surface) -> float:
+        return self.surface_welo[(player_id, surface)]
 
 
 def export_matches(dataset: TennisDataset, path: Path) -> None:
@@ -195,7 +265,9 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_head2head_wins",
         "player1_head2head_surface_wins",
         "player1_elo",
+        "player1_welo",
         "player1_surface_elo",
+        "player1_surface_welo",
         "player2_id",
         "player2_name",
         "player2_hand",
@@ -211,7 +283,10 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_head2head_wins",
         "player2_head2head_surface_wins",
         "player2_elo",
+        "player2_welo",
         "player2_surface_elo",
+        "player2_surface_welo",
+        "score",
         "winner",
     )
 
@@ -310,8 +385,12 @@ def _match_row(
         ),
         "player1_head2head_wins": player1_head2head_wins,
         "player1_head2head_surface_wins": player1_head2head_surface_wins,
-        "player1_elo": stats.get_elo_rating(match.player1_id),
-        "player1_surface_elo": stats.get_surface_elo_rating(
+        "player1_elo": stats.get_elo(match.player1_id),
+        "player1_welo": stats.get_welo(match.player1_id),
+        "player1_surface_elo": stats.get_surface_elo(
+            match.player1_id, tournament.surface
+        ),
+        "player1_surface_welo": stats.get_surface_welo(
             match.player1_id, tournament.surface
         ),
         "player2_id": match.player2_id,
@@ -332,10 +411,15 @@ def _match_row(
         ),
         "player2_head2head_wins": player2_head2head_wins,
         "player2_head2head_surface_wins": player2_head2head_surface_wins,
-        "player2_elo": stats.get_elo_rating(match.player2_id),
-        "player2_surface_elo": stats.get_surface_elo_rating(
+        "player2_elo": stats.get_elo(match.player2_id),
+        "player2_welo": stats.get_welo(match.player2_id),
+        "player2_surface_elo": stats.get_surface_elo(
             match.player2_id, tournament.surface
         ),
+        "player2_surface_welo": stats.get_surface_welo(
+            match.player2_id, tournament.surface
+        ),
+        "score": match.score,
         "winner": match.winner,
     }
 

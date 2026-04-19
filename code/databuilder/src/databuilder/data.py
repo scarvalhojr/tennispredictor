@@ -328,6 +328,7 @@ class Match:
         self.player1_id = player1_id
         self.player2_id = player2_id
         self.winner = winner
+        self.score = score
         self.best_of = best_of
         self.winner_sets = 0
         self.loser_sets = 0
