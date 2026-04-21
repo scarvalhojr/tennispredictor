@@ -50,6 +50,9 @@ class Stats:
             lambda: self.INITIAL_ELO_RATING
         )
         self.glicko: GlickoRatings = GlickoRatings()
+        self.surface_glicko: defaultdict[Surface, GlickoRatings] = defaultdict(
+            GlickoRatings
+        )
 
     def add_match(self, tournament: Tournament, match: Match):
         self.total_matches += 1
@@ -76,6 +79,7 @@ class Stats:
             self.total_surface_losses[(loser_id, tournament.surface)] += 1
             self.head2head_surface_wins[(winner_id, loser_id, tournament.surface)] += 1
             self._update_surface_elos(match, tournament.surface)
+            self.surface_glicko[tournament.surface].add_result(winner_id, loser_id)
 
     def _update_elos(self, match: Match):
         p1_id = match.player1_id
@@ -235,6 +239,9 @@ class Stats:
     def get_glicko(self, player_id: int) -> float:
         return self.glicko.get_rating(player_id)
 
+    def get_surface_glicko(self, player_id: int, surface: Surface) -> float:
+        return self.surface_glicko[surface].get_rating(player_id)
+
 
 def export_matches(dataset: TennisDataset, path: Path) -> None:
     """
@@ -275,6 +282,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_surface_elo",
         "player1_surface_welo",
         "player1_glicko",
+        "player1_surface_glicko",
         "player2_id",
         "player2_name",
         "player2_hand",
@@ -294,6 +302,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_surface_elo",
         "player2_surface_welo",
         "player2_glicko",
+        "player2_surface_glicko",
         "score",
         "winner",
     )
@@ -315,6 +324,10 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         writer.writeheader()
         for tournament, match in iter_matches(dataset, tournament_levels=levels):
             stats.glicko.set_current_date(tournament.start_date)
+            if tournament.surface is not None:
+                stats.surface_glicko[tournament.surface].set_current_date(
+                    tournament.start_date
+                )
             writer.writerow(_match_row(dataset, tournament, match, stats))
 
     info(f"Exported {stats.total_matches} matches to {path}")
@@ -403,6 +416,9 @@ def _match_row(
             match.player1_id, tournament.surface
         ),
         "player1_glicko": stats.get_glicko(match.player1_id),
+        "player1_surface_glicko": stats.get_surface_glicko(
+            match.player1_id, tournament.surface
+        ),
         "player2_id": match.player2_id,
         "player2_name": player2.full_name(),
         "player2_hand": _to_string(player2.hand),
@@ -430,6 +446,9 @@ def _match_row(
             match.player2_id, tournament.surface
         ),
         "player2_glicko": stats.get_glicko(match.player2_id),
+        "player2_surface_glicko": stats.get_surface_glicko(
+            match.player2_id, tournament.surface
+        ),
         "score": match.score,
         "winner": match.winner,
     }

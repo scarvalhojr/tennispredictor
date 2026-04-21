@@ -30,7 +30,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from logging import debug, warning
 
-DEFAULT_PERIOD_LENGTH_DAYS = 30
+DEFAULT_PERIOD_LENGTH_DAYS = 60
 GLICKO_SCALE_FACTOR = 400 / math.log(10)
 BASE_RATING = 1500
 
@@ -72,21 +72,26 @@ class GlickoRatings:
             self._start_new_period(current_date)
             return
 
-        if current_date > self._period_end + self._period_length:
-            # TODO: handle long interruptions in the calendar such as COVID-19
+        # Process pending updates for the current period
+        self._process_period_updates()
+
+        inactive_periods = int((current_date - self._period_end) / self._period_length)
+        if inactive_periods >= 1:
+            # handle long interruptions in the calendar
             warning(
-                f"Current date {current_date} is more than one period after the "
-                f"current Glicko period ends at {self._period_end}"
+                f"Adjusting rating deviations following {inactive_periods} "
+                f"inactive periods since the last period ended on {self._period_end} "
+                f"before starting a new period from {current_date}"
             )
+            for _ in range(inactive_periods):
+                self.adjust_rd_for_inactive_period()
             self._start_new_period(current_date)
         else:
             # Start a new period immediately after the current one
             self._start_new_period()
 
-        # Process updates for the current period
-        self._process_period_updates()
-
     def _process_period_updates(self):
+        # TODO: remove inactive players after long absence
         for player_id in self._pending_updates:
             player = self._rating[player_id]
             rating_list, rd_list, outcome_list = self._pending_updates[player_id]
@@ -108,6 +113,10 @@ class GlickoRatings:
         self._pending_updates[loser_id][0].append(winner.rating)
         self._pending_updates[loser_id][1].append(winner.rd)
         self._pending_updates[loser_id][2].append(0)
+
+    def adjust_rd_for_inactive_period(self):
+        for player in self._rating.values():
+            player.did_not_compete()
 
 
 class Player:
