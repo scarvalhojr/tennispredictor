@@ -23,10 +23,91 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 """
 
-import math
+from __future__ import annotations
 
+import math
+from collections import defaultdict
+from datetime import date, timedelta
+from logging import debug, warning
+
+DEFAULT_PERIOD_LENGTH_DAYS = 30
 GLICKO_SCALE_FACTOR = 400 / math.log(10)
 BASE_RATING = 1500
+
+
+class GlickoRatings:
+    """
+    Glicko2 ratings for a set of players.
+    """
+
+    def __init__(self, period_length_days: int = DEFAULT_PERIOD_LENGTH_DAYS):
+        self._period_length = timedelta(days=period_length_days)
+        self._period_start = None
+        self._period_end = None
+        self._rating: defaultdict[int, Player] = defaultdict(Player)
+        self._pending_updates: defaultdict[
+            int, tuple[list[float], list[float], list[float]]
+        ] = defaultdict(lambda: ([], [], []))
+
+    def get_rating(self, player_id: int) -> float:
+        return self._rating[player_id].rating
+
+    def _start_new_period(self, start_date: date | None = None):
+        if start_date is None:
+            self._period_start = self._period_end
+        else:
+            self._period_start = start_date
+
+        self._period_end = self._period_start + self._period_length
+        debug(
+            f"Started new Glicko period from {self._period_start} to {self._period_end}"
+        )
+
+    def set_current_date(self, current_date: date):
+        if self._period_end is not None and current_date < self._period_end:
+            return
+
+        if self._period_end is None:
+            # Start the very first period
+            self._start_new_period(current_date)
+            return
+
+        if current_date > self._period_end + self._period_length:
+            # TODO: handle long interruptions in the calendar such as COVID-19
+            warning(
+                f"Current date {current_date} is more than one period after the "
+                f"current Glicko period ends at {self._period_end}"
+            )
+            self._start_new_period(current_date)
+        else:
+            # Start a new period immediately after the current one
+            self._start_new_period()
+
+        # Process updates for the current period
+        self._process_period_updates()
+
+    def _process_period_updates(self):
+        for player_id in self._pending_updates:
+            player = self._rating[player_id]
+            rating_list, rd_list, outcome_list = self._pending_updates[player_id]
+
+            if len(rating_list) == 0:
+                player.did_not_compete()
+            else:
+                player.update_player(rating_list, rd_list, outcome_list)
+                self._pending_updates[player_id] = ([], [], [])
+
+    def add_result(self, winner_id: int, loser_id: int):
+        winner = self._rating[winner_id]
+        loser = self._rating[loser_id]
+
+        self._pending_updates[winner_id][0].append(loser.rating)
+        self._pending_updates[winner_id][1].append(loser.rd)
+        self._pending_updates[winner_id][2].append(1)
+
+        self._pending_updates[loser_id][0].append(winner.rating)
+        self._pending_updates[loser_id][1].append(winner.rd)
+        self._pending_updates[loser_id][2].append(0)
 
 
 class Player:

@@ -13,6 +13,7 @@ from typing import Any
 
 from .data import DataInconsistencyError, Match, Player, TennisDataset, Tournament
 from .enums import Surface, TournamentLevel
+from .glicko2 import GlickoRatings
 from .process import iter_matches
 
 
@@ -48,6 +49,7 @@ class Stats:
         self.surface_welo: defaultdict[tuple[int, Surface], float] = defaultdict(
             lambda: self.INITIAL_ELO_RATING
         )
+        self.glicko: GlickoRatings = GlickoRatings()
 
     def add_match(self, tournament: Tournament, match: Match):
         self.total_matches += 1
@@ -67,6 +69,7 @@ class Stats:
         self.total_losses[loser_id] += 1
         self.head2head_wins[(winner_id, loser_id)] += 1
         self._update_elos(match)
+        self.glicko.add_result(winner_id, loser_id)
 
         if tournament.surface is not None:
             self.total_surface_wins[(winner_id, tournament.surface)] += 1
@@ -229,6 +232,9 @@ class Stats:
     def get_surface_welo(self, player_id: int, surface: Surface) -> float:
         return self.surface_welo[(player_id, surface)]
 
+    def get_glicko(self, player_id: int) -> float:
+        return self.glicko.get_rating(player_id)
+
 
 def export_matches(dataset: TennisDataset, path: Path) -> None:
     """
@@ -268,6 +274,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_welo",
         "player1_surface_elo",
         "player1_surface_welo",
+        "player1_glicko",
         "player2_id",
         "player2_name",
         "player2_hand",
@@ -286,6 +293,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_welo",
         "player2_surface_elo",
         "player2_surface_welo",
+        "player2_glicko",
         "score",
         "winner",
     )
@@ -306,6 +314,7 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for tournament, match in iter_matches(dataset, tournament_levels=levels):
+            stats.glicko.set_current_date(tournament.start_date)
             writer.writerow(_match_row(dataset, tournament, match, stats))
 
     info(f"Exported {stats.total_matches} matches to {path}")
@@ -393,6 +402,7 @@ def _match_row(
         "player1_surface_welo": stats.get_surface_welo(
             match.player1_id, tournament.surface
         ),
+        "player1_glicko": stats.get_glicko(match.player1_id),
         "player2_id": match.player2_id,
         "player2_name": player2.full_name(),
         "player2_hand": _to_string(player2.hand),
@@ -419,6 +429,7 @@ def _match_row(
         "player2_surface_welo": stats.get_surface_welo(
             match.player2_id, tournament.surface
         ),
+        "player2_glicko": stats.get_glicko(match.player2_id),
         "score": match.score,
         "winner": match.winner,
     }
