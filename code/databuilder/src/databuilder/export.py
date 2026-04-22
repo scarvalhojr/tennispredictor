@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .data import DataInconsistencyError, Match, Player, TennisDataset, Tournament
+from .elo import EloRatings
 from .enums import Surface, TournamentLevel
 from .glicko2 import GlickoRatings
 from .process import iter_matches
@@ -21,8 +22,6 @@ class Stats:
     """
     Statistics about the dataset.
     """
-
-    INITIAL_ELO_RATING = 1500
 
     def __init__(self):
         self.total_matches = 0
@@ -39,16 +38,10 @@ class Stats:
         self.head2head_surface_wins: defaultdict[tuple[int, int, Surface], int] = (
             defaultdict(lambda: 0)
         )
-        self.elo: defaultdict[int, float] = defaultdict(lambda: self.INITIAL_ELO_RATING)
-        self.welo: defaultdict[int, float] = defaultdict(
-            lambda: self.INITIAL_ELO_RATING
-        )
-        self.surface_elo: defaultdict[tuple[int, Surface], float] = defaultdict(
-            lambda: self.INITIAL_ELO_RATING
-        )
-        self.surface_welo: defaultdict[tuple[int, Surface], float] = defaultdict(
-            lambda: self.INITIAL_ELO_RATING
-        )
+        self.elo: EloRatings = EloRatings()
+        self.welo: EloRatings = EloRatings()
+        self.surface_elo: defaultdict[Surface, EloRatings] = defaultdict(EloRatings)
+        self.surface_welo: defaultdict[Surface, EloRatings] = defaultdict(EloRatings)
         self.glicko: GlickoRatings = GlickoRatings()
         self.wglicko: GlickoRatings = GlickoRatings()
         self.surface_glicko: defaultdict[Surface, GlickoRatings] = defaultdict(
@@ -77,7 +70,8 @@ class Stats:
         self.total_wins[winner_id] += 1
         self.total_losses[loser_id] += 1
         self.head2head_wins[(winner_id, loser_id)] += 1
-        self._update_elos(match)
+        self.elo.add_result(winner_id, loser_id)
+        self.welo.add_result(winner_id, loser_id, games_ratio)
         self.glicko.add_result(winner_id, loser_id)
         self.wglicko.add_result(winner_id, loser_id, games_ratio)
 
@@ -85,111 +79,14 @@ class Stats:
             self.total_surface_wins[(winner_id, tournament.surface)] += 1
             self.total_surface_losses[(loser_id, tournament.surface)] += 1
             self.head2head_surface_wins[(winner_id, loser_id, tournament.surface)] += 1
-            self._update_surface_elos(match, tournament.surface)
+            self.surface_elo[tournament.surface].add_result(winner_id, loser_id)
+            self.surface_welo[tournament.surface].add_result(
+                winner_id, loser_id, games_ratio
+            )
             self.surface_glicko[tournament.surface].add_result(winner_id, loser_id)
             self.surface_wglicko[tournament.surface].add_result(
                 winner_id, loser_id, games_ratio
             )
-
-    def _update_elos(self, match: Match):
-        p1_id = match.player1_id
-        p2_id = match.player2_id
-
-        p1_win, p2_win = self._winner_indicators(match)
-        games_ratio = match.games_ratio()
-
-        p1_matches = self.get_total_matches(p1_id)
-        p2_matches = self.get_total_matches(p2_id)
-
-        p1_elo = self.elo[p1_id]
-        p2_elo = self.elo[p2_id]
-        self.elo[p1_id] = self._new_elo(p1_elo, p2_elo, p1_matches, p1_win)
-        self.elo[p2_id] = self._new_elo(p2_elo, p1_elo, p2_matches, p2_win)
-
-        p1_welo = self.welo[p1_id]
-        p2_welo = self.welo[p2_id]
-        self.welo[p1_id] = self._new_welo(
-            p1_welo, p2_welo, p1_matches, p1_win, games_ratio=games_ratio
-        )
-        self.welo[p2_id] = self._new_welo(
-            p2_welo, p1_welo, p2_matches, p2_win, games_ratio=games_ratio
-        )
-
-    def _update_surface_elos(self, match: Match, surface: Surface):
-        p1_id = match.player1_id
-        p2_id = match.player2_id
-
-        p1_win, p2_win = self._winner_indicators(match)
-        games_ratio = match.games_ratio()
-
-        p1_matches = self.get_total_surface_matches(p1_id, surface)
-        p2_matches = self.get_total_surface_matches(p2_id, surface)
-
-        p1_elo = self.surface_elo[(p1_id, surface)]
-        p2_elo = self.surface_elo[(p2_id, surface)]
-        self.surface_elo[(p1_id, surface)] = self._new_elo(
-            p1_elo, p2_elo, p1_matches, p1_win
-        )
-        self.surface_elo[(p2_id, surface)] = self._new_elo(
-            p2_elo, p1_elo, p2_matches, p2_win
-        )
-
-        p1_welo = self.surface_welo[(p1_id, surface)]
-        p2_welo = self.surface_welo[(p2_id, surface)]
-        self.surface_welo[(p1_id, surface)] = self._new_welo(
-            p1_welo, p2_welo, p1_matches, p1_win, games_ratio=games_ratio
-        )
-        self.surface_welo[(p2_id, surface)] = self._new_welo(
-            p2_welo, p1_welo, p2_matches, p2_win, games_ratio=games_ratio
-        )
-
-    def _winner_indicators(self, match: Match) -> tuple[float, float]:
-        if match.winner == 1:
-            p1_win, p2_win = (1, 0)
-        elif match.winner == 2:
-            p1_win, p2_win = (0, 1)
-        else:
-            raise DataInconsistencyError(
-                f"Invalid winner '{match.winner}' for match {match}"
-            )
-
-        return p1_win, p2_win
-
-    def _new_elo(
-        self,
-        player_elo: float,
-        opponent_elo: float,
-        num_matches: int,
-        winner_indicator: float,
-    ) -> float:
-        win_prob = self._win_probability(player_elo, opponent_elo)
-        scale_factor = self._scale_factor(num_matches)
-
-        return player_elo + scale_factor * (winner_indicator - win_prob)
-
-    def _new_welo(
-        self,
-        player_welo: float,
-        opponent_welo: float,
-        num_matches: int,
-        winner_indicator: float,
-        *,
-        games_ratio: float,
-    ) -> float:
-        win_prob = self._win_probability(player_welo, opponent_welo)
-        scale_factor = self._scale_factor(num_matches)
-
-        return player_welo + scale_factor * (winner_indicator - win_prob) * games_ratio
-
-    def _win_probability(self, player_elo: float, opponent_elo: float) -> float:
-        return 1 / (1 + 10 ** ((opponent_elo - player_elo) / 400))
-
-    def _scale_factor(self, num_matches: int) -> float:
-        """
-        The scale factor is based on the number of matches the player has played,
-        according to a formula suggested by Kovalchik in a paper from 2016
-        """
-        return 250 / (num_matches + 5) ** 0.4
 
     def update_highest_rank(self, player_id: int, rank: int | None):
         if rank is None:
@@ -232,16 +129,16 @@ class Stats:
         return self.head2head_surface_wins[(player1_id, player2_id, surface)]
 
     def get_elo(self, player_id: int) -> float:
-        return self.elo[player_id]
+        return self.elo.get_rating(player_id)
 
     def get_welo(self, player_id: int) -> float:
-        return self.welo[player_id]
+        return self.welo.get_rating(player_id)
 
     def get_surface_elo(self, player_id: int, surface: Surface) -> float:
-        return self.surface_elo[(player_id, surface)]
+        return self.surface_elo[surface].get_rating(player_id)
 
     def get_surface_welo(self, player_id: int, surface: Surface) -> float:
-        return self.surface_welo[(player_id, surface)]
+        return self.surface_welo[surface].get_rating(player_id)
 
     def get_glicko(self, player_id: int) -> float:
         return self.glicko.get_rating(player_id)
