@@ -8,6 +8,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "glicko2-py (>=0.1.0,<0.2.0)"
 ]
 
 [tool.poetry]

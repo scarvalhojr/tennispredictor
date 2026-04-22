@@ -125,6 +125,21 @@ pycodestyle = ">=2.14.0,<2.15.0"
 pyflakes = ">=3.4.0,<3.5.0"
 
 [[package]]
+name = "glicko2-py"
+version = "0.1.0"
+description = "Pure Glicko-2 rating system — standalone library"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+files = [
+    {file = "glicko2_py-0.1.0-py3-none-any.whl", hash = "sha256:79a67e2a55af1bc0f97d3184f027c8b40b91425d39a2f3223c2a17dd60c66e8d"},
+    {file = "glicko2_py-0.1.0.tar.gz", hash = "sha256:222c60b1ceb75496cb00bb6ff79f4d3848b1c85ad015b0c817f59884b8bd0bbe"},
+]
+
+[package.extras]
+postgres = ["psycopg[binary] (>=3.1)"]
+
+[[package]]
 name = "isort"
 version = "8.0.1"
 description = "A Python utility / library to sort Python imports."
@@ -324,4 +339,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "b6cc480ffb5eff964c567ee5621be6d3e1a92530ac3ab3b49275bb951487314c"
+content-hash = "96546e561a0b11cec68480dac53ba01e1d422c6c385301fd35db7a5fca5f6849"

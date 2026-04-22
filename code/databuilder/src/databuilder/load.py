@@ -302,6 +302,7 @@ def _parse_match(
 
     score = _parse_string(row.get("score"))
     if score is None:
+        # TODO: keep matches with no score?
         warning(
             f"Ignoring match with missing score on "
             f"{tournament.start_date} at line number {line_no}"
@@ -311,6 +312,7 @@ def _parse_match(
     best_of_str = row.get("best_of")
     best_of = _parse_integer(best_of_str, line_no=line_no)
     if best_of not in (3, 5):
+        # TODO: are there any?
         warning(
             f"Ignoring match with best of {best_of_str} format on "
             f"{tournament.start_date} at line number {line_no}"
@@ -352,6 +354,18 @@ def _parse_match(
         prefix2,
         line_no=line_no,
     )
+
+    if player1_id == 199999 or player2_id == 199999:
+        warning(
+            f"Ignoring match with missing player information at line number {line_no}"
+        )
+        return
+
+    if player1_id == player2_id:
+        raise DataInconsistencyError(
+            f"Winner and loser players are the same at line number {line_no}: "
+            f"{player1_id}"
+        )
 
     # TODO: add round, minutes
     tournament.add_match(
