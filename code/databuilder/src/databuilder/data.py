@@ -387,3 +387,7 @@ class Match:
 
     def __str__(self) -> str:
         return f"{self.match_num} {self.player1_id} vs {self.player2_id}"
+
+    def games_ratio(self) -> float:
+        # TODO: handle missing score?
+        return self.winner_games / (self.winner_games + self.loser_games)

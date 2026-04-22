@@ -13,6 +13,18 @@ from glicko2.math.conversions import mu_to_rating
 DEFAULT_PERIOD_LENGTH_DAYS = 60
 
 
+class GlickPeriodNotStartedError(Exception):
+    """
+    Raised when a period is not started.
+    """
+
+    def __init__(self):
+        self.message = "Glicko period not started"
+
+    def __str__(self):
+        return self.message
+
+
 class GlickoRatings:
     """
     Glicko2 ratings for a set of players.
@@ -71,5 +83,16 @@ class GlickoRatings:
             # Start a new period immediately after the current one
             self._start_new_period()
 
-    def add_result(self, winner_id: int, loser_id: int, score: float = 1.0):
+    def add_result(self, winner_id: int, loser_id: int, games_ratio: float = 1.0):
+        if self._current_period is None:
+            raise GlickPeriodNotStartedError()
+
+        # The library expects a score between 0 and 1 representing the match score
+        # from the perspective of the first player, where 0 means the first player
+        # lost, 0.5 means a draw, and 1 means the first player won. The formula
+        # below converts the games ratio to a number > 0.5 and <= 1. For instance,
+        # a 6-0 6-0 win gets a score of 1, whereas a 0-6 0-6 7-6 7-6 7-6 match
+        # (with games ratio = 0.411) gets a score of 0.7055.
+        score = 0.5 * games_ratio + 0.5
+
         self._current_period.add_match(MatchResult(winner_id, loser_id, score))

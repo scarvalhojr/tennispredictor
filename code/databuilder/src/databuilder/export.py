@@ -50,7 +50,11 @@ class Stats:
             lambda: self.INITIAL_ELO_RATING
         )
         self.glicko: GlickoRatings = GlickoRatings()
+        self.wglicko: GlickoRatings = GlickoRatings()
         self.surface_glicko: defaultdict[Surface, GlickoRatings] = defaultdict(
+            GlickoRatings
+        )
+        self.surface_wglicko: defaultdict[Surface, GlickoRatings] = defaultdict(
             GlickoRatings
         )
 
@@ -68,11 +72,14 @@ class Stats:
                 f"Invalid winner '{match.winner}' for match {match} at {tournament}"
             )
 
+        games_ratio = match.games_ratio()
+
         self.total_wins[winner_id] += 1
         self.total_losses[loser_id] += 1
         self.head2head_wins[(winner_id, loser_id)] += 1
         self._update_elos(match)
         self.glicko.add_result(winner_id, loser_id)
+        self.wglicko.add_result(winner_id, loser_id, games_ratio)
 
         if tournament.surface is not None:
             self.total_surface_wins[(winner_id, tournament.surface)] += 1
@@ -80,13 +87,16 @@ class Stats:
             self.head2head_surface_wins[(winner_id, loser_id, tournament.surface)] += 1
             self._update_surface_elos(match, tournament.surface)
             self.surface_glicko[tournament.surface].add_result(winner_id, loser_id)
+            self.surface_wglicko[tournament.surface].add_result(
+                winner_id, loser_id, games_ratio
+            )
 
     def _update_elos(self, match: Match):
         p1_id = match.player1_id
         p2_id = match.player2_id
 
         p1_win, p2_win = self._winner_indicators(match)
-        games_ratio = self._games_ratio(match)
+        games_ratio = match.games_ratio()
 
         p1_matches = self.get_total_matches(p1_id)
         p2_matches = self.get_total_matches(p2_id)
@@ -110,7 +120,7 @@ class Stats:
         p2_id = match.player2_id
 
         p1_win, p2_win = self._winner_indicators(match)
-        games_ratio = self._games_ratio(match)
+        games_ratio = match.games_ratio()
 
         p1_matches = self.get_total_surface_matches(p1_id, surface)
         p2_matches = self.get_total_surface_matches(p2_id, surface)
@@ -144,9 +154,6 @@ class Stats:
             )
 
         return p1_win, p2_win
-
-    def _games_ratio(self, match: Match) -> float:
-        return match.winner_games / (match.winner_games + match.loser_games)
 
     def _new_elo(
         self,
@@ -239,8 +246,14 @@ class Stats:
     def get_glicko(self, player_id: int) -> float:
         return self.glicko.get_rating(player_id)
 
+    def get_wglicko(self, player_id: int) -> float:
+        return self.wglicko.get_rating(player_id)
+
     def get_surface_glicko(self, player_id: int, surface: Surface) -> float:
         return self.surface_glicko[surface].get_rating(player_id)
+
+    def get_surface_wglicko(self, player_id: int, surface: Surface) -> float:
+        return self.surface_wglicko[surface].get_rating(player_id)
 
 
 def export_matches(dataset: TennisDataset, path: Path) -> None:
@@ -282,7 +295,9 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_surface_elo",
         "player1_surface_welo",
         "player1_glicko",
+        "player1_wglicko",
         "player1_surface_glicko",
+        "player1_surface_wglicko",
         "player2_id",
         "player2_name",
         "player2_hand",
@@ -302,7 +317,9 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_surface_elo",
         "player2_surface_welo",
         "player2_glicko",
+        "player2_wglicko",
         "player2_surface_glicko",
+        "player2_surface_wglicko",
         "score",
         "winner",
     )
@@ -324,8 +341,12 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         writer.writeheader()
         for tournament, match in iter_matches(dataset, tournament_levels=levels):
             stats.glicko.set_current_date(tournament.start_date)
+            stats.wglicko.set_current_date(tournament.start_date)
             if tournament.surface is not None:
                 stats.surface_glicko[tournament.surface].set_current_date(
+                    tournament.start_date
+                )
+                stats.surface_wglicko[tournament.surface].set_current_date(
                     tournament.start_date
                 )
             writer.writerow(_match_row(dataset, tournament, match, stats))
@@ -416,7 +437,11 @@ def _match_row(
             match.player1_id, tournament.surface
         ),
         "player1_glicko": stats.get_glicko(match.player1_id),
+        "player1_wglicko": stats.get_wglicko(match.player1_id),
         "player1_surface_glicko": stats.get_surface_glicko(
+            match.player1_id, tournament.surface
+        ),
+        "player1_surface_wglicko": stats.get_surface_wglicko(
             match.player1_id, tournament.surface
         ),
         "player2_id": match.player2_id,
@@ -446,7 +471,11 @@ def _match_row(
             match.player2_id, tournament.surface
         ),
         "player2_glicko": stats.get_glicko(match.player2_id),
+        "player2_wglicko": stats.get_wglicko(match.player2_id),
         "player2_surface_glicko": stats.get_surface_glicko(
+            match.player2_id, tournament.surface
+        ),
+        "player2_surface_wglicko": stats.get_surface_wglicko(
             match.player2_id, tournament.surface
         ),
         "score": match.score,
