@@ -44,10 +44,14 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player1_rank",
         "player1_points",
         "player1_highest_rank",
-        "player1_total_matches",
-        "player1_win_rate",
-        "player1_surface_matches",
-        "player1_surface_win_rate",
+        "player1_career_matches",
+        "player1_career_win_rate",
+        "player1_year_matches",
+        "player1_year_win_rate",
+        "player1_surface_career_matches",
+        "player1_surface_career_win_rate",
+        "player1_surface_year_matches",
+        "player1_surface_year_win_rate",
         "player1_head2head_wins",
         "player1_head2head_surface_wins",
         "player1_elo",
@@ -66,10 +70,14 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_rank",
         "player2_points",
         "player2_highest_rank",
-        "player2_total_matches",
-        "player2_win_rate",
-        "player2_surface_matches",
-        "player2_surface_win_rate",
+        "player2_career_matches",
+        "player2_career_win_rate",
+        "player2_year_matches",
+        "player2_year_win_rate",
+        "player2_surface_career_matches",
+        "player2_surface_career_win_rate",
+        "player2_surface_year_matches",
+        "player2_surface_year_win_rate",
         "player2_head2head_wins",
         "player2_head2head_surface_wins",
         "player2_elo",
@@ -116,97 +124,91 @@ def _format_date(a_date: date | None) -> str:
 def _match_data(
     dataset: TennisDataset, tournament: Tournament, match: Match, stats: Stats
 ) -> dict[str, str | int | float | None]:
-    player1 = dataset.get_player(match.player1_id)
-    player2 = dataset.get_player(match.player2_id)
+    player1_id, player2_id = (match.player1_id, match.player2_id)
+    player1 = dataset.get_player(player1_id)
+    player2 = dataset.get_player(player2_id)
     if player1 is None or player2 is None:
         raise DataInconsistencyError(
             f"Player data not found for match {match} at {tournament}"
         )
 
-    stats.set_current_match(tournament.start_date, tournament.surface)
-    player1_stats = stats.get_player_stats(player1)
-    player2_stats = stats.get_player_stats(player2)
-    player1_surface_stats = stats.get_player_surface_stats(player1, tournament.surface)
-    player2_surface_stats = stats.get_player_surface_stats(player2, tournament.surface)
+    surface = tournament.surface
+    tournament_date = tournament.start_date
+
+    stats.set_current_match(tournament_date, surface)
+    player1_ranking = stats.get_player_ranking_stats(player1)
+    player2_ranking = stats.get_player_ranking_stats(player2)
+    player1_overall = stats.get_player_overall_stats(player1_id)
+    player2_overall = stats.get_player_overall_stats(player2_id)
+    player1_surface = stats.get_player_surface_stats(player1_id, surface)
+    player2_surface = stats.get_player_surface_stats(player2_id, surface)
 
     row = {
-        "year": tournament.start_date.year,
+        "year": tournament_date.year,
         "tournament_id": tournament.tournament_id,
-        "tournament_start_date": _format_date(tournament.start_date),
+        "tournament_start_date": _format_date(tournament_date),
         "tournament_name": tournament.name,
         "tournament_level": tournament.level.value,
-        "surface": tournament.surface,
+        "surface": surface,
         "draw_size": tournament.draw_size,
         "match_num": match.match_num,
         "best_of": match.best_of,
-        "player1_id": match.player1_id,
+        "player1_id": player1_id,
         "player1_name": player1.full_name(),
         "player1_hand": _to_string(player1.hand),
         "player1_height_cm": player1.height_cm,
-        "player1_age": player1.age_at(tournament.start_date),
-        "player1_rank": player1_stats.rank,
-        "player1_points": player1_stats.points,
-        "player1_highest_rank": player1_stats.highest_rank,
-        "player1_total_matches": player1_stats.get_total_matches(),
-        "player1_win_rate": player1_stats.get_win_rate(),
-        "player1_surface_matches": player1_surface_stats.get_total_matches(),
-        "player1_surface_win_rate": player1_surface_stats.get_win_rate(),
-        "player1_head2head_wins": stats.get_head2head_wins(
-            match.player1_id, match.player2_id
-        ),
+        "player1_age": player1.age_at(tournament_date),
+        "player1_rank": player1_ranking.rank,
+        "player1_points": player1_ranking.points,
+        "player1_highest_rank": player1_ranking.highest_rank,
+        "player1_career_matches": player1_overall.get_career_matches(),
+        "player1_career_win_rate": player1_overall.get_career_win_rate(),
+        "player1_year_matches": player1_overall.get_year_matches(),
+        "player1_year_win_rate": player1_overall.get_year_win_rate(),
+        "player1_surface_career_matches": player1_surface.get_career_matches(),
+        "player1_surface_career_win_rate": player1_surface.get_career_win_rate(),
+        "player1_surface_year_matches": player1_surface.get_year_matches(),
+        "player1_surface_year_win_rate": player1_surface.get_year_win_rate(),
+        "player1_head2head_wins": stats.get_head2head_wins(player1_id, player2_id),
         "player1_head2head_surface_wins": stats.get_head2head_surface_wins(
-            match.player1_id, match.player2_id, tournament.surface
+            player1_id, player2_id, surface
         ),
-        "player1_elo": stats.get_elo(match.player1_id),
-        "player1_welo": stats.get_welo(match.player1_id),
-        "player1_surface_elo": stats.get_surface_elo(
-            match.player1_id, tournament.surface
-        ),
-        "player1_surface_welo": stats.get_surface_welo(
-            match.player1_id, tournament.surface
-        ),
-        "player1_glicko": stats.get_glicko(match.player1_id),
-        "player1_wglicko": stats.get_wglicko(match.player1_id),
-        "player1_surface_glicko": stats.get_surface_glicko(
-            match.player1_id, tournament.surface
-        ),
-        "player1_surface_wglicko": stats.get_surface_wglicko(
-            match.player1_id, tournament.surface
-        ),
-        "player2_id": match.player2_id,
+        "player1_elo": stats.get_elo(player1_id),
+        "player1_welo": stats.get_welo(player1_id),
+        "player1_surface_elo": stats.get_surface_elo(player1_id, surface),
+        "player1_surface_welo": stats.get_surface_welo(player1_id, surface),
+        "player1_glicko": stats.get_glicko(player1_id),
+        "player1_wglicko": stats.get_wglicko(player1_id),
+        "player1_surface_glicko": stats.get_surface_glicko(player1_id, surface),
+        "player1_surface_wglicko": stats.get_surface_wglicko(player1_id, surface),
+        "player2_id": player2_id,
         "player2_name": player2.full_name(),
         "player2_hand": _to_string(player2.hand),
         "player2_height_cm": player2.height_cm,
-        "player2_age": player2.age_at(tournament.start_date),
-        "player2_rank": player2_stats.rank,
-        "player2_points": player2_stats.points,
-        "player2_highest_rank": player2_stats.highest_rank,
-        "player2_total_matches": player2_stats.get_total_matches(),
-        "player2_win_rate": player2_stats.get_win_rate(),
-        "player2_surface_matches": player2_surface_stats.get_total_matches(),
-        "player2_surface_win_rate": player2_surface_stats.get_win_rate(),
-        "player2_head2head_wins": stats.get_head2head_wins(
-            match.player2_id, match.player1_id
-        ),
+        "player2_age": player2.age_at(tournament_date),
+        "player2_rank": player2_ranking.rank,
+        "player2_points": player2_ranking.points,
+        "player2_highest_rank": player2_ranking.highest_rank,
+        "player2_career_matches": player2_overall.get_career_matches(),
+        "player2_career_win_rate": player2_overall.get_career_win_rate(),
+        "player2_year_matches": player2_overall.get_year_matches(),
+        "player2_year_win_rate": player2_overall.get_year_win_rate(),
+        "player2_surface_career_matches": player2_surface.get_career_matches(),
+        "player2_surface_career_win_rate": player2_surface.get_career_win_rate(),
+        "player2_surface_year_matches": player2_surface.get_year_matches(),
+        "player2_surface_year_win_rate": player2_surface.get_year_win_rate(),
+        "player2_head2head_wins": stats.get_head2head_wins(player2_id, player1_id),
         "player2_head2head_surface_wins": stats.get_head2head_surface_wins(
-            match.player2_id, match.player1_id, tournament.surface
+            player2_id, player1_id, surface
         ),
-        "player2_elo": stats.get_elo(match.player2_id),
-        "player2_welo": stats.get_welo(match.player2_id),
-        "player2_surface_elo": stats.get_surface_elo(
-            match.player2_id, tournament.surface
-        ),
-        "player2_surface_welo": stats.get_surface_welo(
-            match.player2_id, tournament.surface
-        ),
-        "player2_glicko": stats.get_glicko(match.player2_id),
-        "player2_wglicko": stats.get_wglicko(match.player2_id),
-        "player2_surface_glicko": stats.get_surface_glicko(
-            match.player2_id, tournament.surface
-        ),
-        "player2_surface_wglicko": stats.get_surface_wglicko(
-            match.player2_id, tournament.surface
-        ),
+        "player2_elo": stats.get_elo(player2_id),
+        "player2_welo": stats.get_welo(player2_id),
+        "player2_surface_elo": stats.get_surface_elo(player2_id, surface),
+        "player2_surface_welo": stats.get_surface_welo(player2_id, surface),
+        "player2_glicko": stats.get_glicko(player2_id),
+        "player2_wglicko": stats.get_wglicko(player2_id),
+        "player2_surface_glicko": stats.get_surface_glicko(player2_id, surface),
+        "player2_surface_wglicko": stats.get_surface_wglicko(player2_id, surface),
         "score": match.score,
         "winner": match.winner,
     }
