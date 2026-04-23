@@ -13,13 +13,28 @@ from glicko2.math.conversions import mu_to_rating
 DEFAULT_PERIOD_LENGTH_DAYS = 60
 
 
-class GlickPeriodNotStartedError(Exception):
+class GlickoPeriodNotStartedError(Exception):
     """
     Raised when a period is not started.
     """
 
     def __init__(self):
         self.message = "Glicko period not started"
+
+    def __str__(self):
+        return self.message
+
+
+class GlickoPeriodInThePastError(Exception):
+    """
+    Raised when a period is in the past.
+    """
+
+    def __init__(self, current_date: date, period_start: date):
+        self.message = (
+            f"Date {current_date} is before the current Glicko period that started "
+            f"on {period_start}"
+        )
 
     def __str__(self):
         return self.message
@@ -53,6 +68,9 @@ class GlickoRatings:
         )
 
     def set_current_date(self, current_date: date):
+        if self._period_start is not None and current_date < self._period_start:
+            raise GlickoPeriodInThePastError(current_date, self._period_start)
+
         if self._period_end is not None and current_date < self._period_end:
             return
 
@@ -85,7 +103,7 @@ class GlickoRatings:
 
     def add_result(self, winner_id: int, loser_id: int, games_ratio: float = 1.0):
         if self._current_period is None:
-            raise GlickPeriodNotStartedError()
+            raise GlickoPeriodNotStartedError()
 
         # The library expects a score between 0 and 1 representing the match score
         # from the perspective of the first player, where 0 means the first player

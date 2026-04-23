@@ -10,7 +10,7 @@ from logging import info
 from pathlib import Path
 from typing import Any
 
-from .data import DataInconsistencyError, Match, Player, TennisDataset, Tournament
+from .data import DataInconsistencyError, Match, TennisDataset, Tournament
 from .enums import TournamentLevel
 from .iter import iter_matches
 from .stats import Stats
@@ -113,13 +113,6 @@ def _format_date(a_date: date | None) -> str:
     return a_date.strftime("%Y-%m-%d") if a_date else ""
 
 
-def _get_ranking(player: Player, match_date: date) -> tuple[int | None, int | None]:
-    ranking = player.get_ranking(match_date)
-    if ranking is not None:
-        return ranking.position, ranking.points
-    return None, None
-
-
 def _match_data(
     dataset: TennisDataset, tournament: Tournament, match: Match, stats: Stats
 ) -> dict[str, str | int | float | None]:
@@ -130,28 +123,11 @@ def _match_data(
             f"Player data not found for match {match} at {tournament}"
         )
 
-    stats.set_current_date(tournament.start_date, tournament.surface)
-
-    player1_rank, player1_points = _get_ranking(player1, tournament.start_date)
-    player2_rank, player2_points = _get_ranking(player2, tournament.start_date)
-
-    # Update highest rank before outputting the values for the current match
-    stats.update_highest_rank(match.player1_id, player1_rank)
-    stats.update_highest_rank(match.player2_id, player2_rank)
-
-    player1_head2head_wins = stats.get_head2head_wins(
-        match.player1_id, match.player2_id
-    )
-    player2_head2head_wins = stats.get_head2head_wins(
-        match.player2_id, match.player1_id
-    )
-
-    player1_head2head_surface_wins = stats.get_head2head_surface_wins(
-        match.player1_id, match.player2_id, tournament.surface
-    )
-    player2_head2head_surface_wins = stats.get_head2head_surface_wins(
-        match.player2_id, match.player1_id, tournament.surface
-    )
+    stats.set_current_match(tournament.start_date, tournament.surface)
+    player1_stats = stats.get_player_stats(player1)
+    player2_stats = stats.get_player_stats(player2)
+    player1_surface_stats = stats.get_player_surface_stats(player1, tournament.surface)
+    player2_surface_stats = stats.get_player_surface_stats(player2, tournament.surface)
 
     row = {
         "year": tournament.start_date.year,
@@ -168,19 +144,19 @@ def _match_data(
         "player1_hand": _to_string(player1.hand),
         "player1_height_cm": player1.height_cm,
         "player1_age": player1.age_at(tournament.start_date),
-        "player1_rank": player1_rank,
-        "player1_points": player1_points,
-        "player1_highest_rank": stats.get_highest_rank(match.player1_id),
-        "player1_total_matches": stats.get_total_matches(match.player1_id),
-        "player1_win_rate": stats.get_win_rate(match.player1_id),
-        "player1_surface_matches": stats.get_total_surface_matches(
-            match.player1_id, tournament.surface
+        "player1_rank": player1_stats.rank,
+        "player1_points": player1_stats.points,
+        "player1_highest_rank": player1_stats.highest_rank,
+        "player1_total_matches": player1_stats.get_total_matches(),
+        "player1_win_rate": player1_stats.get_win_rate(),
+        "player1_surface_matches": player1_surface_stats.get_total_matches(),
+        "player1_surface_win_rate": player1_surface_stats.get_win_rate(),
+        "player1_head2head_wins": stats.get_head2head_wins(
+            match.player1_id, match.player2_id
         ),
-        "player1_surface_win_rate": stats.get_surface_win_rate(
-            match.player1_id, tournament.surface
+        "player1_head2head_surface_wins": stats.get_head2head_surface_wins(
+            match.player1_id, match.player2_id, tournament.surface
         ),
-        "player1_head2head_wins": player1_head2head_wins,
-        "player1_head2head_surface_wins": player1_head2head_surface_wins,
         "player1_elo": stats.get_elo(match.player1_id),
         "player1_welo": stats.get_welo(match.player1_id),
         "player1_surface_elo": stats.get_surface_elo(
@@ -202,19 +178,19 @@ def _match_data(
         "player2_hand": _to_string(player2.hand),
         "player2_height_cm": player2.height_cm,
         "player2_age": player2.age_at(tournament.start_date),
-        "player2_rank": player2_rank,
-        "player2_points": player2_points,
-        "player2_highest_rank": stats.get_highest_rank(match.player2_id),
-        "player2_total_matches": stats.get_total_matches(match.player2_id),
-        "player2_win_rate": stats.get_win_rate(match.player2_id),
-        "player2_surface_matches": stats.get_total_surface_matches(
-            match.player2_id, tournament.surface
+        "player2_rank": player2_stats.rank,
+        "player2_points": player2_stats.points,
+        "player2_highest_rank": player2_stats.highest_rank,
+        "player2_total_matches": player2_stats.get_total_matches(),
+        "player2_win_rate": player2_stats.get_win_rate(),
+        "player2_surface_matches": player2_surface_stats.get_total_matches(),
+        "player2_surface_win_rate": player2_surface_stats.get_win_rate(),
+        "player2_head2head_wins": stats.get_head2head_wins(
+            match.player2_id, match.player1_id
         ),
-        "player2_surface_win_rate": stats.get_surface_win_rate(
-            match.player2_id, tournament.surface
+        "player2_head2head_surface_wins": stats.get_head2head_surface_wins(
+            match.player2_id, match.player1_id, tournament.surface
         ),
-        "player2_head2head_wins": player2_head2head_wins,
-        "player2_head2head_surface_wins": player2_head2head_surface_wins,
         "player2_elo": stats.get_elo(match.player2_id),
         "player2_welo": stats.get_welo(match.player2_id),
         "player2_surface_elo": stats.get_surface_elo(
