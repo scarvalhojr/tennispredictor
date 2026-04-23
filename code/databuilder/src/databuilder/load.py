@@ -226,7 +226,8 @@ def _load_rankings_file(file: Path, dataset: TennisDataset) -> None:
 
 
 def load_matches(csv_dir: Path, dataset: TennisDataset) -> None:
-    # TODO: load matches from Qualifying rounds and Challenger events
+    # TODO: load matches from Qualifying rounds
+
     # Match files from the main ATP tour events are named atp_matches_????.csv
     files = sorted(csv_dir.glob("atp_matches_????.csv"))
 
@@ -302,7 +303,6 @@ def _parse_match(
 
     score = _parse_string(row.get("score"))
     if score is None:
-        # TODO: keep matches with no score?
         warning(
             f"Ignoring match with missing score on "
             f"{tournament.start_date} at line number {line_no}"
@@ -312,7 +312,6 @@ def _parse_match(
     best_of_str = row.get("best_of")
     best_of = _parse_integer(best_of_str, line_no=line_no)
     if best_of not in (3, 5):
-        # TODO: are there any?
         warning(
             f"Ignoring match with best of {best_of_str} format on "
             f"{tournament.start_date} at line number {line_no}"
@@ -367,7 +366,7 @@ def _parse_match(
             f"{player1_id}"
         )
 
-    # TODO: add round, minutes
+    # TODO: add tournament round
     tournament.add_match(
         match_num, player1_id, player2_id, winner, score=score, best_of=best_of
     )
