@@ -202,11 +202,6 @@ that their model provided superior forecasts to the official rankings using data
 of the ATP tour from 2000-2008, and could provide higher returns against bookmaker odds using a
 simple betting strategy.
 
-\textcite{fayomi_2022} revisited the Bradley-Terry model, using it to compute win probabilities and
-new player ratings that demonstrated the profound impact of court surface (especially, clay vs. hard
-court) on a player's true ability. They applied the model to data from the ATP tour between January
-2019 to September 2020, achieving similar results to that of \textcite{mchale_2011}.
-
 Expanding on this relational logic, \textcite{knottenbelt_2012} proposed a common-opponent
 stochastic model that relied on the transitive nature of tennis, predicting match outcomes by
 calculating the difference in service points won against opponents that both players had previously
@@ -217,6 +212,12 @@ this is often not the case. Using this approach, they were nevertheless able to 
 long-term profit against the best odds offered by bookmakers for a set of over 2,000 tennis
 matches from the ATP and WTA tours of 2011.
 
+\textcite{kovalchik_2016} tested the predictive performance of 11 published forecasting models for
+predicting the outcomes of 2,395 singles matches during the 2014 season. They found that an
+Elo-based model was the best performing model, achieving an accuracy of up to 70\%, although this
+was still worse than a Bookmakers consensus model built by aggregating the odds offered by
+established bookmakers for each match, which achieved accuracy of 72\%.
+
 Subsequent research heavily explored the Elo rating system. \textcite{williams_2021} compared
 standard Elo, surface-specific Elo ratings, and weighted composites against betting odds,
 demonstrating that Elo-based approaches are effective, offering comparable, and sometimes superior,
@@ -224,8 +225,13 @@ forecasting performance to betting odds on Grand Slam matches between 2018 and 2
 \textcite{angelini_2022} introduced the concept of a Weighted Elo (WElo), which incorporates the
 margin of victory (i.e., the number of games or sets won) into the standard Elo updating formula to
 better reflect players' strengths. They tested their model on a set of matches from the ATP and WTA
-tours between 2012 and 2020, and claimed that the WElo was superior to the standard Elo approach
+tours between 2012 and 2020, and showed that the WElo was superior to the standard Elo approach
 as well as the Bradley-Terry type model of \textcite{mchale_2011}, among other models.
+
+\textcite{fayomi_2022} revisited the Bradley-Terry model, using it to compute win probabilities and
+new player ratings that demonstrated the profound impact of court surface (especially, clay vs. hard
+court) on a player's true ability. They applied the model to data from the ATP tour between January
+2019 to September 2020, achieving similar results to that of \textcite{mchale_2011}.
 
 \subsection{Machine learning approaches}
 
@@ -234,14 +240,15 @@ approaches. An early example is \textcite{somboonphokkaphan_2009}, who deployed 
 Perceptron (MLP) -- a foundational class of fully-connected feedforward artificial neural network --
 that incorporated time-series history, environmental data in the form of surface type, and several
 statistical features such as winning percentage of first serves and total points won. They tested
-their model on a set of Grand Slam matches between 2003 and 2008, and claimed accuracy rates
-ranging from 69\% to 81\%.
+their model on a set of matches between 2003 and 2008 and reported accuracy rates ranging from
+69\% to 81\%, although it should be noted that these results were restricted to a small set of Grand
+Slam matches only.
 
 Recognising that historical data alone misses intangible factors, \textcite{gu_2019} built an
 Analytic Network Process (ANP) -- an advanced, non-linear decision-making framework -- combining
 data analysis with expert human judgments, capturing unquantifiable variables such as a player's
-psychology, brainpower, and stamina. They claimed that their model achieved accuracy of 85.1\%,
-however, it should be noted that this was restricted to a set of only 94 matches from the 2015 US
+psychology, brainpower, and stamina. They reported that their model achieved accuracy of up to
+85.1\%, however, once again, this was restricted to a set of only 94 matches from the 2015 US
 Open tournament. Moreover, this approach required the collection of judgements from tennis experts
 based on their knowledge and expertise about the matches and the players, an approach that is
 clearly difficult to scale.
@@ -254,10 +261,7 @@ serve strength---specifically the percentage of points won on first and second s
 predictor of match outcomes. \textcite{wilkens_2021} conducted a comprehensive comparative study
 using various ML methods (Logistic Regression, Neural Network, Random Forest, Gradient Boosting
 Machine, and Support Vector Machine) on a dataset of over 39,000 matches from the ATP and WTA tours,
-and noted that differences in prediction performance among the various ML approaches were small. He
-also cautioned about the heterogeneous setup and data used throughout the literature -- in some
-cases in conjunction with only short forecasting horizons -- demanding prudence when comparing or
-even generalising their findings.
+and noted that differences in prediction performance among the various ML approaches were small.
 
 \textcite{yue_2022} applied exploratory data analysis (EDA) to examine variables related to match
 results and introduced new variables using the Glicko rating system of \textcite{glickman_1999},
@@ -277,18 +281,26 @@ a tennis player being between 28 and 32 years old. Moreover, they investigated d
 strategies including ``expanding window'' and ``rolling window''. They found that XGBoost achieved
 the highest classification rates, with up to 83\% accuracy with the expanding window strategy.
 
-TODO: \textcite{kovalchik_2016} tested the predictive performance of 11 published forecasting models for
-predicting the outcomes of 2,395 singles matches during the 2014 season. They found that the XGBoost
-model achieved the highest accuracy, with up to 73.8\% accuracy.
+\subsection{Identified research needs}
 
+Taken together, the studies reviewed in this section illustrate a recurring limitation: conclusions
+are often drawn from short calendar windows or focus almost exclusively on Grand Slam tournaments.
+Moreover, as noted by \textcite{wilkens_2021}, the heterogeneous setup and data used throughout the
+literature also demand prudence when comparing or even generalising their findings. These
+shortcomings motivate the emphasis for the present work: assembling and curating a large,
+multi-decade body of high-quality professional tennis match data, enriching it with derived metrics
+and several alternative rating formulations (including variants inspired by Elo- and Glicko-type
+ideas), and, finally, applying multiple machine learning approaches and comparing them under a
+common protocol, so that differences in predictive performance can be interpreted in light of
+consistent data and feature engineering.
+
+% Other papers not referenced above:
 % \textcite{buhamra_2025-1} - statistical enhanced learning
 % \textcite{buhamra_2024} - similar to \textcite{buhamra_2025-2}
-
 % \textcite{trucco_2025} - XGBoosting using ATP statistics and betting odds.
-
 % \textcite{almarashi_2024} - comparative study of NNAR approach with linear stochastic time series
-% models in predicting tennis player's performance. Only looked at three players: Nadal, Federer, and
-% Djokovic.
+% models in predicting tennis player's performance. Only looked at three players: Nadal, Federer,
+% and Djokovic.
 
 \pagebreak
 
