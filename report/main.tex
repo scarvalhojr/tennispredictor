@@ -112,8 +112,8 @@ mathematical transformations or separate statistical models.
 
 There has been significant research on developing statistical models to rank tennis players as
 alternatives to the official rankings published by the professional tennis organisations. In
-parallel, several studies have applied machine learning to predict the results of tennis matches,
-however, most of these studies were restricted to specific tournaments (e.g. Grand Slam tournaments
+parallel, several studies have applied machine learning to predict the results of tennis matches;
+however, most of these studies were restricted to specific tournaments (e.g.\ Grand Slam tournaments
 only) or did not take full advantage of the available data and statistical models. This project aims
 to address these limitations by tapping into the vast amount of data available and using machine
 learning techniques to explore the predictive power of different statistical models proposed in the
@@ -134,8 +134,8 @@ markets, to politics and international conflicts \parencite{gu_2019}.
 
 \subsection{Project scope}
 
-This project is focused on predicting the results of professional tennis matches on the main events
-organised by the Association of Tennis Professionals (ATP), the men's tennis circuit. While there
+This project is focused on predicting the results of professional tennis matches at tournaments on
+the men's tour organised by the Association of Tennis Professionals (ATP). While there
 is a wealth of data available from the Women's Tennis Association (WTA) as well, limiting the scope
 to one of the two circuits allows for a more focused and comprehensive analysis in the limited time
 available for this project. We note that the focus of this project is modelling predictions based
@@ -215,8 +215,8 @@ matches from the ATP and WTA tours of 2011.
 \textcite{kovalchik_2016} tested the predictive performance of 11 published forecasting models for
 predicting the outcomes of 2,395 singles matches during the 2014 season. They found that an
 Elo-based model was the best performing model, achieving an accuracy of up to 70\%, although this
-was still worse than a Bookmakers consensus model built by aggregating the odds offered by
-established bookmakers for each match, which achieved accuracy of 72\%.
+was still worse than a bookmaker consensus model built by aggregating the odds offered by
+established bookmakers for each match, which achieved an accuracy of 72\%.
 
 Subsequent research heavily explored the Elo rating system. \textcite{williams_2021} compared
 standard Elo, surface-specific Elo ratings, and weighted composites against betting odds,
@@ -230,12 +230,12 @@ as well as the Bradley-Terry type model of \textcite{mchale_2011}, among other m
 
 \textcite{fayomi_2022} revisited the Bradley-Terry model, using it to compute win probabilities and
 new player ratings that demonstrated the profound impact of court surface (especially, clay vs. hard
-court) on a player's true ability. They applied the model to data from the ATP tour between January
-2019 to September 2020, achieving similar results to that of \textcite{mchale_2011}.
+court) on a player's true ability. They applied the model to data from the ATP tour from January
+2019 to September 2020, achieving results similar to those of \textcite{mchale_2011}.
 
 \subsection{Machine learning approaches}
 
-Predictive techniques transitioned from statistical models to complex machine learning (ML)
+Predictive techniques have transitioned from statistical models to complex machine learning (ML)
 approaches. An early example is \textcite{somboonphokkaphan_2009}, who deployed a Multi-Layer
 Perceptron (MLP) -- a foundational class of fully-connected feedforward artificial neural network --
 that incorporated time-series history, environmental data in the form of surface type, and several
@@ -247,8 +247,8 @@ Slam matches only.
 Recognising that historical data alone misses intangible factors, \textcite{gu_2019} built an
 Analytic Network Process (ANP) -- an advanced, non-linear decision-making framework -- combining
 data analysis with expert human judgments, capturing unquantifiable variables such as a player's
-psychology, brainpower, and stamina. They reported that their model achieved accuracy of up to
-85.1\%, however, once again, this was restricted to a set of only 94 matches from the 2015 US
+psychology, brainpower, and stamina. They reported that their model achieved an accuracy of up to
+85.1\%; however, once again, this was restricted to a set of only 94 matches from the 2015 US
 Open tournament. Moreover, this approach required the collection of judgements from tennis experts
 based on their knowledge and expertise about the matches and the players, an approach that is
 clearly difficult to scale.
@@ -307,13 +307,127 @@ consistent data and feature engineering.
 
 \section{Methodology}
 
-[You may structure this as you wish, to suit your particular project. Include information on the stages of the project and details of how each stage was carried out. In addition, explain and justify (either from common knowledge in the field, with reference to sources or through logical deduction) the choice of approach at all levels. A good rule of thumb for checking whether the argumentation in this (or any other) section is ‘watertight’ is to ask yourself if there is anything in the text that the reader could reasonably ask ‘why’ or ‘how can you be sure?’ about without getting an answer in the text itself – if there is, then you have more writing to do.
+\subsection{Data collection}
 
-Examples of project stages are data collection and preparation, modelling, model selection and tuning, model evaluation and data interpretation (this is not an exhaustive list). However, do not include each and every type of task only because you learnt about in the course. Many will not be applicable in your project (e.g. data cleaning, scaling or PCA will not always be needed). If you are ‘skipping’ a common task such as data cleaning, just explain why, as this one of the decisions you made with regard to the methodology.
+Historical ATP data was obtained from an open repository maintained by Jeff
+Sackmann\footnote{\url{https://github.com/JeffSackmann/tennis_atp}}, which contains comma-separated
+(CSV) files of ATP players, rankings and match results. This repository was cloned into a separate
+fork\footnote{\url{https://github.com/scarvalhojr/tennis_atp}} so that a small number of
+data-quality issues discovered during experimentation could be corrected in a controlled (and
+documented) manner. Examples of such fixes include removing duplicate ranking rows, excluding
+matches in which the placeholder name ``Bye'' appeared as if it was a player, as well as a few other
+minor inconsistencies in the source files.
 
-Discuss the implications of the methodology in the application domain.
+The repository presents information in three main families of CSV files:
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{Player files} supply a unique numeric player identifier (ID) together with the
+    player name, playing hand (right, left, ambidextrous, or unknown), date of birth, and height.
+  \item \textbf{Ranking files} contain the official ATP weekly rankings: ranking date, player
+    ID, ranking position, and ranking points.
+  \item \textbf{Match files} describe individual completed contests: tournament information (name,
+    level, starting date, court surface, draw size), player IDs for the winner and loser, match
+    format (e.g.\ best-of-three or best-of-five sets), and the recorded scoreline.
+\end{enumerate}
 
-Information on tools (e.g. Colab, Python libraries etc.) should be presented in a subsection of this chapter and not ‘woven’ through the conceptual account of the methodology.]
+Match files were combined into a single match-level table. Each row was then linked to the player
+master file on winner and loser IDs so that player attributes could be attached to each match.
+Ranking files were aligned to matches by selecting, for each player, the ranking position and points
+at the tournament start date (or the closest available ranking date). Winner and loser player IDs
+were randomly reassigned as player 1 and player 2, so that the dataset is not biased towards one
+player or the other. A winner column was added to indicate the winner of the match. The consolidated
+dataset resulted in 189{,}373 ATP singles matches spanning the seasons from December 1967 through
+December 2024. Figure \ref{fig:match-distribution} shows the distribution of matches per year by
+tournament level (Grand Slam, Masters 1000, ATP Finals, etc.).
+
+\begin{figure}[ht!]
+  \centering
+  \caption{Distribution of matches per year by tournament level}\vspace{1em}
+  \includegraphics[width=\linewidth]{images/matches_per_year_by_tournament_level.png}
+  \label{fig:match-distribution}
+\end{figure}
+
+\subsection{Feature engineering}
+
+Several features were calculated in a single chronological pass over all matches, with a running
+state maintained for every player (and for every player--surface pair) so that quantities could be
+computed from \emph{prior} contests only. In other words, match outcomes were written to the
+exported row first, and only afterwards were win/loss counters, head-to-head tallies, and rating
+updates advanced to include the current result. This guarantees that no statistic leaks information
+from matches played later in time or from the fixture being predicted.
+
+For each side in a match, the following history-based quantities were derived from official ATP
+ranking snapshots and from completed matches strictly before the match under consideration:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Career-best ranking.} The best (numerically smallest) official singles ranking
+    position the player had attained up to the tournament week.
+  \item \textbf{Career match volume and win rate.} Total professional matches played to date and
+    the fraction of those matches won.
+  \item \textbf{Recent activity and form.} The number of matches played in approximately the last
+    twelve months and the fraction of those matches won. This ``year'' window is a rolling look-back
+    of 365 days from the tournament date (rather than calendar months).
+\end{itemize}
+
+Because surface strongly conditions playing style and results, parallel counters were maintained for
+each court type on the ATP tour (hard, clay, grass, and carpet). For every player and surface, the
+same career totals and twelve-month counts and win percentages were tracked using only matches
+played on that surface before the current match. Where the surface was unknown or missing,
+surface-specific aggregates were left undefined for that row.
+
+\textbf{Head-to-head} counts were also attached to each match, recording how many times the
+first-named player had beaten the second to that date, in two directed views: overall (i.e.\ all
+surfaces) and on the current event surface. Symmetric statistics for the opponent were also added.
+
+Alongside the tabular features above, the same chronological scan maintained eight parallel rating
+histories for every player: four derived from Elo-style updates and four from Glicko-style updates.
+In each case the variants are (i)~overall versus surface-specific, and (ii)~binary win--loss
+versus \emph{margin-of-victory}-weighted updates. The surface-specific variants are updated only
+from prior matches played on the same surface, whereas the overall variants are updated from all
+prior matches regardless of surface. The weighted variants use a margin-of-victory factor $V$ in the
+spirit of \textcite{mchale_2011}: $V = G_{\mathrm{win}} / (G_{\mathrm{win}} + G_{\mathrm{lose}})$,
+where $G_{\mathrm{win}}$ and $G_{\mathrm{lose}}$ are total games won in the match by the winner and
+loser, respectively (from the recorded scoreline, independent of which player is listed first). For
+instance, a 6--0 6--0 score yields $V = 1$, whereas a 7--6 7--6 result yields $V \approx 0.538$.
+
+\paragraph{Elo-type ratings.}
+Every player begins from the conventional initial rating of $1500$. After each completed match, the
+rating change follows the usual logistic expected-score pairing based on a $400$-point rating scale;
+the step size is damped as the player's career match count grows, using the scaling factor
+$K = 250 / (N + 5)^{0.4}$, where $N$ is the player's match count prior to the match under
+consideration, as proposed by \textcite{kovalchik_2016}.
+
+\paragraph{Glicko-type ratings.}
+Glicko ratings use the Glicko-2 variant documented in \textcite{glickman_2022}, with non-overlapping
+\emph{rating periods} of $60$~days and system volatility parameter $\tau = 0.5$. In this system,
+each player has a rating, a rating deviation, and a volatility. The rating deviation measures the
+uncertainty of the player's rating, and is high when a player is not competing frequently. The
+volatility indicates the degree of expected fluctuation in a player's rating --- it is high when a
+player has erratic performances and low when the player performs at a consistent level. Matches
+within a rating period are treated as having occurred simultaneously. The margin-weighted variant
+maps the games ratio $V$ to a Glicko-2 outcome factor $M = 0.5\,V + 0.5$, since the algorithm
+expects a score between $0$ and $1$, where $0$ means the first player in the pairing lost, $0.5$
+means a draw, and $1$ means the first player won.
+
+Together, each entrant therefore carries four Elo-based features (\texttt{elo}, \texttt{welo},
+\texttt{surface\_elo}, \texttt{surface\_welo}) and four Glicko-based features (\texttt{glicko},
+\texttt{wglicko}, \texttt{surface\_glicko}, \texttt{surface\_wglicko}) prior to the match being
+predicted.
+
+Table \ref{tab:dataset-features} in Appendix \ref{appendix:final-dataset-features} shows the full
+set of features with brief descriptions.
+
+\subsection{Data analysis}
+
+\subsection{Data preparation}
+
+\subsection{Model selection and tuning}
+
+\subsection{Model evaluation}
+
+\subsection{Implementation details}
+
+% TODO: link to dataset builder code, reference to Glicko library
+
+% TODO: Information on tools (e.g. Python libraries)
 
 
 \pagebreak
@@ -348,6 +462,115 @@ Discuss the implication of the results in the application domain]
 
 
 \appendix
+
+\section{Final dataset features}\label{appendix:final-dataset-features}
+
+The exported match-level file contains 63 columns. Table~\ref{tab:dataset-features} lists the full
+schema with brief descriptions. Features denoted by the placeholder \texttt{playerX} stand for
+\emph{two} CSV columns in each row---one prefixed with \texttt{player1} and one with
+\texttt{player2}---carrying the same information for each entrant. All other features appear once
+per row.
+
+{
+\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.4\linewidth}p{0.52\linewidth}@{}}
+  \caption{Columns in the final dataset CSV.}\label{tab:dataset-features}\\
+  \toprule
+  \textbf{Feature name} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  \multicolumn{2}{c}{\tablename\ \thetable{} --- \textit{continued}} \\
+  \toprule
+  \textbf{Feature name} & \textbf{Description} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{2}{r}{\textit{Continued on next page}} \\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  \multicolumn{2}{@{}l}{\textit{Tournament and match metadata}} \\
+  \texttt{year} &
+    Calendar year of the tournament start date. \\
+  \texttt{tournament\_id} &
+    Unique identifier for the tournament instance. \\
+  \texttt{tournament\_start\_date} &
+    Scheduled first day of the event (in \texttt{YYYY-MM-DD} format). \\
+  \texttt{tournament\_name} &
+    Official tournament name from the source files. \\
+  \texttt{tournament\_level} &
+    Tournament level (e.g.\ Grand Slam, Masters 1000, etc.). \\
+  \texttt{surface} &
+    Court surface (e.g.\ hard, clay, grass, carpet) when known. \\
+  \texttt{draw\_size} &
+    Main-draw size (e.g.\ 32, 64, 128 players). \\
+  \texttt{match\_num} &
+    Order of the match within the tournament (source ordering). \\
+  \texttt{best\_of} &
+    Match format (e.g.\ best-of-3 or best-of-5 sets). \\
+
+  \multicolumn{2}{@{}l}{\textit{Per-player fields (replace \texttt{X} with \texttt{1} and \texttt{2})}} \\
+  \texttt{playerX\_id} &
+    Unique player identifier. \\
+  \texttt{playerX\_name} &
+    Player full name. \\
+  \texttt{playerX\_hand} &
+    Playing hand (right, left, ambidextrous, or unknown). \\
+  \texttt{playerX\_height\_cm} &
+    Height in centimetres when available. \\
+  \texttt{playerX\_age} &
+    Age in years at the tournament start date. \\
+  \texttt{playerX\_rank} &
+    Ranking position on the ranking date aligned to the match. \\
+  \texttt{playerX\_points} &
+    Ranking points on the ranking date aligned to the match. \\
+  \texttt{playerX\_highest\_rank} &
+    Best ranking position achieved up to the tournament week. \\
+  \texttt{playerX\_career\_matches} &
+    Count of prior completed professional matches. \\
+  \texttt{playerX\_career\_win\_rate} &
+    Fraction of prior professional matches won. \\
+  \texttt{playerX\_year\_matches} &
+    Count of matches in the 365 days before the match. \\
+  \texttt{playerX\_year\_win\_rate} &
+    Fraction of matches won in the 365 days before the match. \\
+  \texttt{playerX\_surface\_career\_matches} &
+    Prior matches on the same surface type as the event. \\
+  \texttt{playerX\_surface\_career\_win\_rate} &
+    Career win rate on that surface (prior matches only). \\
+  \texttt{playerX\_surface\_year\_matches} &
+    Matches on that surface in the 365 days before the match. \\
+  \texttt{playerX\_surface\_year\_win\_rate} &
+    Win rate on that surface in the 365 days before the match. \\
+  \texttt{playerX\_head2head\_wins} &
+    Prior wins by this player against the opponent (directed count). \\
+  \texttt{playerX\_head2head\_surface\_wins} &
+    Prior wins against the opponent on the current match surface. \\
+  \texttt{playerX\_elo} &
+    Overall Elo-style rating before the match. \\
+  \texttt{playerX\_welo} &
+    Margin-of-victory weighted Elo-style rating before the match. \\
+  \texttt{playerX\_surface\_elo} &
+    Surface-specific Elo-style rating before the match. \\
+  \texttt{playerX\_surface\_welo} &
+    Surface-specific margin-of-victory weighted Elo-style rating before the match. \\
+  \texttt{playerX\_glicko} &
+    Glicko-style rating before the match. \\
+  \texttt{playerX\_wglicko} &
+    Margin-of-victory weighted Glicko-style rating before the match. \\
+  \texttt{playerX\_surface\_glicko} &
+    Surface-specific Glicko-style rating before the match. \\
+  \texttt{playerX\_surface\_wglicko} &
+    Surface-specific margin-of-victory weighted Glicko-style rating before the match. \\
+
+  \multicolumn{2}{@{}l}{\textit{Outcome}} \\
+  \texttt{score} &
+    Match scoreline string (sets and tie-break detail). \\
+  \texttt{winner} &
+    Indicator of which listed player won (\texttt{1} or \texttt{2}). \\
+\end{longtable}
+}
 
 \section{Examples of figure, table and equation}
 
@@ -387,6 +610,6 @@ An example of referencing Table \ref{tab:example}.
   \label{eq:example}
 \end{equation}
 
-where $x$, $y$ are the two variables, $x_i$, $y_i$ the i\textsuperscript{th} values, $\bar{x}$, $\bar{y}$ the means, $S_x$ and $S_y$ the sample standard deviations and $S^2_{xy}$ the sample covariance. And here is a reference to Equation \ref{eq:example}.]
+where $x$, $y$ are the two variables, $x_i$, $y_i$ the i\textsuperscript{th} values, $\bar{x}$, $\bar{y}$ the means, $S_x$ and $S_y$ the sample standard deviations and $S^2_{xy}$ the sample covariance. And here is a reference to Equation \ref{eq:example}.
 
 \end{document}
