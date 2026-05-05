@@ -417,17 +417,86 @@ set of features with brief descriptions.
 
 \subsection{Data analysis}
 
+The chronological feature pipeline described above was run over the full consolidated match history
+so that counters, head-to-head totals, and rating systems (including all Elo and Glicko variants)
+reflect every available contest in temporal order. When turning to supervised machine learning,
+however, training and evaluation were restricted to rows where \emph{both} entrants had an official
+ranking position and ranking points available at the time of the match. Matches missing either value
+for either player were excluded because exploratory analysis suggested that ranking-based inputs
+were among the strongest predictors of the winner, and retaining rows with missing rankings would
+either weaken those signals or require ad hoc imputation. In practice, this filter removes
+essentially all matches before 1990, when systematic ranking snapshots for both opponents become
+sufficiently complete in the source data. The resulting dataset contains 104{,}092 rows.
+
+That emphasis on rankings is supported by a simple sanity check: among matches where both players
+have known rankings, define the \emph{favorite} as the player with the better (numerically lower)
+ranking position; that player's win rate is far above 50\% in every season of the dataset. In fact,
+the same idea applies to the Elo and Glicko ratings (including their margin-weighted variants):
+treating the higher-rated player before the match as the favorite also yields win percentages well
+above chance and, hence, these inputs remain powerful candidates for supervised models.
+
+Figure~\ref{fig:favourite-wins-per-year} summarises this behaviour year by year on the filtered data
+subset used for modelling (both ranks and both ranking points present for each player). Each series
+plots the percentage of matches in which the pre-match favorite---by ATP ranking, Elo, weighted Elo
+(wElo), Glicko, or weighted Glicko (wGlicko)---won the contest. All lines sit clearly above a naive
+50\% baseline and generally track one another. Surface-specific ratings are not shown but their
+predictive power is similar.
+
+\begin{figure}[ht!]
+  \centering
+  \caption{Yearly share of matches won by the pre-match favorite by ATP ranking (lower is better)
+    versus overall Elo, weighted Elo (wElo), Glicko, and weighted Glicko (wGlicko); matches where
+    both players have known rank and ranking points only.}\label{fig:favourite-wins-per-year}
+  \vspace{1em}
+  \includegraphics[width=\linewidth]{images/favourite_wins_per_year.png}
+\end{figure}
+
 \subsection{Data preparation}
 
-\subsection{Model selection and tuning}
+Beyond excluding rows with unknown ranking position or ranking points for either player (as set out
+above), the modelling dataset required little further preparation. A handful of remaining fields
+still contained occasional missing values; these were addressed with straightforward imputation in
+the machine-learning pipelines using median or most frequent values.
 
-\subsection{Model evaluation}
+For supervised experiments, columns were grouped by role. The \textbf{target} variable was the match
+\texttt{winner} indicator (\texttt{1} or \texttt{2}). \textbf{Metadata} columns---carried for
+traceability but not fed as inputs to the classifiers---comprised of tournament information (ID,
+name, start date), match order within the event, the recorded score string, and both players'
+identifiers and names. \textbf{Categorical} inputs comprised match format (\texttt{best\_of}),
+tournament level, court surface, and each player's dominant hand; every other predictive column was
+treated as \textbf{numeric} (including rankings, rating histories, head-to-head totals, and derived
+counts). Categorical features were encoded using one-hot encoding.
+
+The cleaned table was divided into \textbf{training} and \textbf{testing} subsets with an
+$80\,\%$--$20\,\%$ row split, respectively. The training pool was then reordered by match date
+so that a \emph{chronological} 10-fold cross-validation could be used to tune hyperparameters
+without leaking information from later matches into earlier ones. After selecting hyperparameters on
+those folds, each model was refit on the full training set with the best hyperparameters. The
+held-out $20\,\%$ test was then used to report general performance.
+
+\subsection{Supervised Machine Learning Models}
+
+Three off-the-shelf classifiers were chosen to span complementary inductive biases while staying
+close to models that appear repeatedly in tennis forecasting work. \textbf{Random Forest} provides a
+strong, interpretable baseline. \textbf{XGBoost} implements regularised gradient boosting with
+second-order optimisation; it often reaches state-of-the-art accuracy on structured data.
+\textbf{CatBoost} rounds out the trio by targeting high-cardinality and categorical fields with
+ordered target statistics and symmetric trees, reducing sensitivity to the exact one-hot encoding
+scheme of categorical features. Together, the three families give a concise comparison of mainstream
+toolkits under the same preprocessing, temporal cross-validation, and hyperparameter search
+pipeline.
 
 \subsection{Implementation details}
 
-% TODO: link to dataset builder code, reference to Glicko library
-
-% TODO: Information on tools (e.g. Python libraries)
+The processing of the original CSV files into the final match-level dataset with all features
+discussed in the previous sections was implemented in Python (code is available
+online\footnote{\url{https://github.com/scarvalhojr/tennispredictor/tree/main/code/databuilder}}).
+Elo-style ratings are implemented directly within the codebase. Glicko-2 ratings delegate the
+update mathematics and period processing to a third-party
+library\footnote{\url{https://pypi.org/project/glicko2-py/}}. Supervised machine learning models
+were implemented using the scikit-learn framework\footnote{\url{https://scikit-learn.org/}}, with
+the built-in Random Forest classifier, and third-party XGBoost\footnote{\url{https://xgboost.ai/}}
+and CatBoost\footnote{\url{https://catboost.ai/}} libraries.
 
 
 \pagebreak
