@@ -10,7 +10,7 @@ from logging import debug, warning
 from glicko2 import MatchResult, RatingEngine, RatingPeriod
 from glicko2.math.conversions import mu_to_rating
 
-DEFAULT_PERIOD_LENGTH_DAYS = 60
+DEFAULT_PERIOD_LENGTH_DAYS = 21
 
 
 class GlickoPeriodNotStartedError(Exception):
