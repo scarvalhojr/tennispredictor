@@ -256,11 +256,13 @@ clearly difficult to scale.
 \textcite{gao_2021} built three machine learning models (Logistic Regression, Random Forest, and
 Support Vector Machine), performed an in-depth feature selection process, and compiled one of the
 largest tennis statistics datasets publicly available. They found that a Random Forest classifier
-achieved the best performance, achieving prediction accuracies exceeding 80\%. They also identified
+achieved the best performance, achieving prediction accuracies exceeding 80\% on a set of 49{,}188
+matches from the ATP tour. They also identified
 serve strength---specifically the percentage of points won on first and second serves---as a key
 predictor of match outcomes. \textcite{wilkens_2021} conducted a comprehensive comparative study
 using various ML methods (Logistic Regression, Neural Network, Random Forest, Gradient Boosting
-Machine, and Support Vector Machine) on a dataset of over 39,000 matches from the ATP and WTA tours,
+Machine, and Support Vector Machine) on a dataset of approximately 39,000 matches from the ATP and
+WTA tours,
 and noted that differences in prediction performance among the various ML approaches were small.
 
 \textcite{yue_2022} applied exploratory data analysis (EDA) to examine variables related to match
@@ -274,7 +276,7 @@ matches.
 
 \textcite{buhamra_2025-2} compared several models including regression-based (logistic, LASSO,
 splines) and machine learning approaches (Classification Tree, Random Forest, linear and non-linear
-Support Vector Machine, Artificial Neural Network, and XGBoost) using Grand Slam
+Support Vector Machine, Artificial Neural Network, and XGBoost) on a set of 5{,}013 Grand Slam
 matches from 2011 to 2021. Different features were considered including ATP ranking and points,
 Elo ratings, bookmaker odds, and age variables that take into account the presumably optimal age of
 a tennis player being between 28 and 32 years old. Moreover, they investigated different forecasting
@@ -307,9 +309,14 @@ consistent data and feature engineering.
 
 \section{Methodology}
 
+This chapter describes how the project was carried out end to end: from the collection and curation
+of the raw match and ranking data, to the engineering of predictive features, and the construction
+and evaluation of the machine learning models.
+
 \subsection{Data collection}
 
-Historical ATP data was obtained from an open repository maintained by Jeff
+Historical data from the ATP tour, along with results from Davis Cup events and the 2024 Summer
+Olympics tennis tournament, was obtained from an open repository maintained by Jeff
 Sackmann\footnote{\url{https://github.com/JeffSackmann/tennis_atp}}, which contains comma-separated
 (CSV) files of ATP players, rankings and match results. This repository was cloned into a separate
 fork\footnote{\url{https://github.com/scarvalhojr/tennis_atp}} so that a small number of
@@ -334,19 +341,11 @@ master file on winner and loser IDs so that player attributes could be attached 
 Ranking files were aligned to matches by selecting, for each player, the ranking position and points
 at the tournament start date (or the closest available ranking date). Winner and loser player IDs
 were randomly reassigned as player 1 and player 2, so that the dataset is not biased towards one
-player or the other. A winner column was added to indicate the winner of the match. The consolidated
-dataset resulted in 189{,}373 ATP singles matches spanning the seasons from December 1967 through
-December 2024. Figure \ref{fig:match-distribution} shows the distribution of matches per year by
-tournament level (Grand Slam, Masters 1000, ATP Finals, etc.).
-
-\begin{figure}[ht!]
-  \centering
-  \caption{Distribution of matches per year by tournament level}\vspace{1em}
-  \includegraphics[width=\linewidth]{images/matches_per_year_by_tournament_level.png}
-  \label{fig:match-distribution}
-\end{figure}
+player or the other. A winner column was added to indicate the winner of the match. Walkovers and
+matches in which a player retired were removed.
 
 \subsection{Feature engineering}
+\label{sec:feature-engineering}
 
 Several features were calculated in a single chronological pass over all matches, with a running
 state maintained for every player (and for every player--surface pair) so that quantities could be
@@ -378,161 +377,67 @@ first-named player had beaten the second to that date, in two directed views: ov
 surfaces) and on the current event surface. Symmetric statistics for the opponent were also added.
 
 Alongside the tabular features above, the same chronological scan maintained eight parallel rating
-histories for every player: four derived from Elo-style updates and four from Glicko-style updates.
+scores for every player: four derived from Elo-style updates and four from Glicko-style updates.
 In each case the variants are (i)~overall versus surface-specific, and (ii)~binary win--loss
 versus \emph{margin-of-victory}-weighted updates. The surface-specific variants are updated only
 from prior matches played on the same surface, whereas the overall variants are updated from all
-prior matches regardless of surface. The weighted variants use a margin-of-victory factor $V$ in the
-spirit of \textcite{mchale_2011}: $V = G_{\mathrm{win}} / (G_{\mathrm{win}} + G_{\mathrm{lose}})$,
-where $G_{\mathrm{win}}$ and $G_{\mathrm{lose}}$ are total games won in the match by the winner and
-loser, respectively (from the recorded scoreline, independent of which player is listed first). For
-instance, a 6--0 6--0 score yields $V = 1$, whereas a 7--6 7--6 result yields $V \approx 0.538$.
+prior matches regardless of surface. The weighted variants use a margin-of-victory factor to account
+for the number of games won by the winner and the loser in the match.
 
 \paragraph{Elo-type ratings.}
 Every player begins from the conventional initial rating of $1500$. After each completed match, the
 rating change follows the usual logistic expected-score pairing based on a $400$-point rating scale;
-the step size is damped as the player's career match count grows, using the scaling factor
-$K = 250 / (N + 5)^{0.4}$, where $N$ is the player's match count prior to the match under
-consideration, as proposed by \textcite{kovalchik_2016}.
+the step size is damped as the player's career match count grows, using the scaling factor proposed
+by \textcite{kovalchik_2016}:
+
+\begin{equation}
+  K = \dfrac{250}{(N + 5)^{0.4}}
+  \label{eq:elo-scale-factor}
+\end{equation}
+
+where $N$ is the player's match count prior to the match under consideration. The margin-of-victory
+factor for the weigthed variants is the one proposed by \textcite{angelini_2022}:
+
+\begin{equation}
+  V = \dfrac{G_{\mathrm{win}}}{(G_{\mathrm{win}} + G_{\mathrm{lose}})}
+  \label{eq:margin-of-victory}
+\end{equation}
+
+where $G_{\mathrm{win}}$ and $G_{\mathrm{lose}}$ are total games won in the match by the winner and
+loser, respectively. This factor is used to update the score of both players from the recorded
+scoreline. As an example, in a best-of-five sets match, a 6--0 6--0 6--0 score yields $V = 1$,
+whereas a 0--6 0--6 7--6 7--6 7--6 result yields $V \approx 0.412$.
 
 \paragraph{Glicko-type ratings.}
 Glicko ratings use the Glicko-2 variant documented in \textcite{glickman_2022}, with non-overlapping
-\emph{rating periods} of $60$~days and system volatility parameter $\tau = 0.5$. In this system,
+\emph{rating periods} of $21$~days and system volatility parameter $\tau = 0.5$. In this system,
 each player has a rating, a rating deviation, and a volatility. The rating deviation measures the
 uncertainty of the player's rating, and is high when a player is not competing frequently. The
 volatility indicates the degree of expected fluctuation in a player's rating --- it is high when a
 player has erratic performances and low when the player performs at a consistent level. Matches
-within a rating period are treated as having occurred simultaneously. The margin-weighted variant
-maps the games ratio $V$ to a Glicko-2 outcome factor $M = 0.5\,V + 0.5$, since the algorithm
-expects a score between $0$ and $1$, where $0$ means the first player in the pairing lost, $0.5$
-means a draw, and $1$ means the first player won.
+within a rating period are treated as having occurred simultaneously. The Glicko-2 system has a
+score factor $S_p$ that can account for the margin-of-victory. However, unlike in the Elo system,
+$S_p$ is different for each player $p$ and reflects the score from each player's perspective: for
+the player who won the match, $S_{\mathrm{winner}} \in (0.5, 1]$, whereas for the player who lost,
+$S_{\mathrm{loser}} \in [0, 0.5)$ --- $0.5$ denotes a draw, but that is not a valid outcome in
+tennis. In the unweighted variants, $S_{\mathrm{winner}} = 1$ and $S_{\mathrm{loser}} = 0$, whereas
+in the weighted variants they are calculated from the margin-of-victory factor $V$ with the
+following formulas:
+
+\begin{equation}
+  S_{winner} = 0.5 V + 0.5
+  \label{eq:glicko-score-winner}
+\end{equation}
+
+\begin{equation}
+  S_{loser} = 1 - S_{winner}
+  \label{eq:glicko-score-loser}
+\end{equation}
 
 Together, each entrant therefore carries four Elo-based features (\texttt{elo}, \texttt{welo},
 \texttt{surface\_elo}, \texttt{surface\_welo}) and four Glicko-based features (\texttt{glicko},
 \texttt{wglicko}, \texttt{surface\_glicko}, \texttt{surface\_wglicko}) prior to the match being
 predicted.
-
-Table \ref{tab:dataset-features} in Appendix \ref{appendix:final-dataset-features} shows the full
-set of features with brief descriptions.
-
-\subsection{Data analysis}
-
-The chronological feature pipeline described above was run over the full consolidated match history
-so that counters, head-to-head totals, and rating systems (including all Elo and Glicko variants)
-reflect every available contest in temporal order. When turning to supervised machine learning,
-however, training and evaluation were restricted to rows where \emph{both} entrants had an official
-ranking position and ranking points available at the time of the match. Matches missing either value
-for either player were excluded because exploratory analysis suggested that ranking-based inputs
-were among the strongest predictors of the winner, and retaining rows with missing rankings would
-either weaken those signals or require ad hoc imputation. In practice, this filter removes
-essentially all matches before 1990, when systematic ranking snapshots for both opponents become
-sufficiently complete in the source data. The resulting dataset contains 104{,}092 rows.
-
-That emphasis on rankings is supported by a simple sanity check: among matches where both players
-have known rankings, define the \emph{favorite} as the player with the better (numerically lower)
-ranking position; that player's win rate is far above 50\% in every season of the dataset. In fact,
-the same idea applies to the Elo and Glicko ratings (including their margin-weighted variants):
-treating the higher-rated player before the match as the favorite also yields win percentages well
-above chance and, hence, these inputs remain powerful candidates for supervised models.
-
-Figure~\ref{fig:favourite-wins-per-year} summarises this behaviour year by year on the filtered data
-subset used for modelling (both ranks and both ranking points present for each player). Each series
-plots the percentage of matches in which the pre-match favorite---by ATP ranking, Elo, weighted Elo
-(wElo), Glicko, or weighted Glicko (wGlicko)---won the contest. All lines sit clearly above a naive
-50\% baseline and generally track one another. Surface-specific ratings are not shown but their
-predictive power is similar.
-
-\begin{figure}[ht!]
-  \centering
-  \caption{Yearly share of matches won by the pre-match favorite by ATP ranking (lower is better)
-    versus overall Elo, weighted Elo (wElo), Glicko, and weighted Glicko (wGlicko); matches where
-    both players have known rank and ranking points only.}\label{fig:favourite-wins-per-year}
-  \vspace{1em}
-  \includegraphics[width=\linewidth]{images/favourite_wins_per_year.png}
-\end{figure}
-
-\subsection{Data preparation}
-
-Beyond excluding rows with unknown ranking position or ranking points for either player (as set out
-above), the modelling dataset required little further preparation. A handful of remaining fields
-still contained occasional missing values; these were addressed with straightforward imputation in
-the machine-learning pipelines using median or most frequent values.
-
-For supervised experiments, columns were grouped by role. The \textbf{target} variable was the match
-\texttt{winner} indicator (\texttt{1} or \texttt{2}). \textbf{Metadata} columns---carried for
-traceability but not fed as inputs to the classifiers---comprised of tournament information (ID,
-name, start date), match order within the event, the recorded score string, and both players'
-identifiers and names. \textbf{Categorical} inputs comprised match format (\texttt{best\_of}),
-tournament level, court surface, and each player's dominant hand; every other predictive column was
-treated as \textbf{numeric} (including rankings, rating histories, head-to-head totals, and derived
-counts). Categorical features were encoded using one-hot encoding.
-
-The cleaned table was divided into \textbf{training} and \textbf{testing} subsets with an
-$80\,\%$--$20\,\%$ row split, respectively. The training pool was then reordered by match date
-so that a \emph{chronological} 10-fold cross-validation could be used to tune hyperparameters
-without leaking information from later matches into earlier ones. After selecting hyperparameters on
-those folds, each model was refit on the full training set with the best hyperparameters. The
-held-out $20\,\%$ test was then used to report general performance.
-
-\subsection{Supervised Machine Learning Models}
-
-Three off-the-shelf classifiers were chosen to span complementary inductive biases while staying
-close to models that appear repeatedly in tennis forecasting work. \textbf{Random Forest} provides a
-strong, interpretable baseline. \textbf{XGBoost} implements regularised gradient boosting with
-second-order optimisation; it often reaches state-of-the-art accuracy on structured data.
-\textbf{CatBoost} rounds out the trio by targeting high-cardinality and categorical fields with
-ordered target statistics and symmetric trees, reducing sensitivity to the exact one-hot encoding
-scheme of categorical features. Together, the three families give a concise comparison of mainstream
-toolkits under the same preprocessing, temporal cross-validation, and hyperparameter search
-pipeline.
-
-\subsection{Implementation details}
-
-The processing of the original CSV files into the final match-level dataset with all features
-discussed in the previous sections was implemented in Python (code is available
-online\footnote{\url{https://github.com/scarvalhojr/tennispredictor/tree/main/code/databuilder}}).
-Elo-style ratings are implemented directly within the codebase. Glicko-2 ratings delegate the
-update mathematics and period processing to a third-party
-library\footnote{\url{https://pypi.org/project/glicko2-py/}}. Supervised machine learning models
-were implemented using the scikit-learn framework\footnote{\url{https://scikit-learn.org/}}, with
-the built-in Random Forest classifier, and third-party XGBoost\footnote{\url{https://xgboost.ai/}}
-and CatBoost\footnote{\url{https://catboost.ai/}} libraries.
-
-
-\pagebreak
-
-
-\section{Results}
-
-[You may structure this as you wish, but let the reader know everything you know about the results, regardless of whether you consider the outcome good or bad.
-
-Discuss the results, rather than simply presenting them to your reader and letting them do the work.
-
-Be inquisitive when analysing your results. For example, if you are getting accuracies in the high 90s there is probably either an extreme imbalance in the data set or a data leak. Always investigate and at least discuss but, if there is time, it is best to redesign and redo your experiments.
-
-Discuss the implication of the results in the application domain]
-
-
-\pagebreak
-
-
-\section{Conclusion}
-
-[Structure as you wish but make sure that a it includes a synthesis of the results, a high-level discussion of their implications in the application domain, any particularly interesting low-level details of the results and, finally, some words on future work i.e. how you or someone else might build on the project.]
-
-
-\pagebreak
-
-
-\printbibliography[heading=bibintoc]
-
-
-\pagebreak
-
-
-\appendix
-
-\section{Final dataset features}\label{appendix:final-dataset-features}
 
 The exported match-level file contains 63 columns. Table~\ref{tab:dataset-features} lists the full
 schema with brief descriptions. Features denoted by the placeholder \texttt{playerX} stand for
@@ -559,7 +464,7 @@ per row.
   \bottomrule
   \endlastfoot
 
-  \multicolumn{2}{@{}l}{\textit{Tournament and match metadata}} \\
+  \multicolumn{2}{@{}l}{\textit{Tournament and match fields}} \\
   \texttt{year} &
     Calendar year of the tournament start date. \\
   \texttt{tournament\_id} &
@@ -640,6 +545,186 @@ per row.
     Indicator of which listed player won (\texttt{1} or \texttt{2}). \\
 \end{longtable}
 }
+
+\subsection{Data analysis}
+
+The consolidated dataset resulted in 189{,}373 matches from 8{,}454 tournaments spanning the seasons
+from December 1967 through December 2024, played by 7{,}477 tennis players.
+Figure~\ref{fig:match-distribution} shows the distribution of matches per year by tournament level.
+The vast majority of matches are from the ATP 250 and 500 tournament levels. The ATP Finals is an
+annual event that is played by the top-ranked (currently, 8) players of the ATP Tour and, hence,
+only has a few matches per year. The only year for which data is available from tennis matches
+played in the Olympics is 2024. Figure~\ref{fig:match-distribution} also shows the percentage of
+matches in which the ranking positions and ranking points of both players are known. Ranking
+positions are lacking in the dataset for a large number of matches before 1985. Similarly, ranking
+points are missing for all matches before 1990.
+
+\begin{figure}[ht!]
+  \centering
+  \caption{Distribution of matches per year by tournament level, along with the percentage of
+    matches in which the ranking positions and ranking points of both players are known.}\vspace{1em}
+  \includegraphics[width=\linewidth]{images/matches_per_year_by_tournament_level.png}
+  \label{fig:match-distribution}
+\end{figure}
+
+The predictive power of the official ATP ranking is noted throughout the literature and can be
+verified with a simple sanity check: among matches where both players have known rankings,
+define the \emph{favorite} as the player with the better (numerically lower) ranking position; that
+player's win rate is far above 50\% in every season of the dataset. In fact, the same observation
+applies to the calculated Elo and Glicko ratings (including their weighted and surface-specific
+variants):
+treating the higher-rated player before the match as the favorite also yields win percentages well
+above chance and, hence, these inputs are likely to be powerful candidates for supervised models.
+Figure~\ref{fig:favourite-wins-per-year} shows the yearly share of matches in which the pre-match
+favorite---by ATP ranking, Elo, weighted Elo (wElo), Glicko, or weighted Glicko (wGlicko)---won the
+contest. All lines sit clearly above 60\% and generally track one another. Surface-specific ratings
+are not shown but their predictive behaviour is similar. Among these rating systems, the overall Elo
+is the most accurate on its own, correctly predicting the favourite to win in 68.31\% of matches in
+the dataset, followed by the weighted Elo (68.12\%), weighted Glicko (67.73\%), and overall Glicko
+(67.48\%). The ATP ranking correctly predicts the winner in 66.24\% of matches in which the rankings
+of both players are known, which is approximately the same as reported by \textcite{williams_2021}.
+The surface-specific Elo and Glicko ratings are marginally less accurate than their overall
+counterparts but are still better than the ATP ranking.
+
+\begin{figure}[ht!]
+  \centering
+  \caption{Yearly share of matches won by the pre-match favorite by ATP ranking
+    versus overall Elo, weighted Elo (wElo), overall Glicko, and weighted Glicko (wGlicko).}
+  \vspace{1em}
+  \includegraphics[width=\linewidth]{images/favourite_wins_per_year.png}
+  \label{fig:favourite-wins-per-year}
+\end{figure}
+
+\subsection{Data preparation}
+\label{sec:data-preparation}
+
+The dataset required little data preparation. Some fields contained occasional missing values and
+these were addressed with straightforward imputation in
+the machine-learning pipelines using median or most frequent values.
+
+For supervised experiments, columns were grouped by role. The \textbf{target} variable was the match
+\texttt{winner} indicator (\texttt{1} or \texttt{2}). \textbf{Metadata} columns---carried for
+traceability but not fed as inputs to the classifiers---comprised of tournament information (ID,
+name, start date), match order within the event, the recorded score string, and both players'
+identifiers and names. \textbf{Categorical} inputs comprised match format (\texttt{best\_of}),
+tournament level, court surface, and each player's dominant hand; every other predictive column was
+treated as \textbf{numeric} (including rankings, rating histories, head-to-head totals, and derived
+counts). Categorical features were encoded using one-hot encoding.
+
+The dataset was divided into \textbf{training} and \textbf{testing} subsets with an
+$80\,\%$--$20\,\%$ row split, respectively. All models were trained with a grid search to select the
+best hyperparameters using a 5-fold cross-validation, and the best hyperparameters were then used to
+refit the model on the full training set. The held-out $20\,\%$ test was then used to report general
+classification performance.
+
+\subsection{Supervised Machine Learning Models}
+
+The following supervised machine learning models were trained and evaluated using a common
+framework. Together they span several tree-based classifiers, gradient boosting and bagging
+techniques, approximate kernel expansions, support vector machines, and a feedforward neural
+network, many of which appear repeatedly in tennis forecasting studies. Due to the size of the
+dataset, non-linear support vector machines became computationally infeasible to train.
+
+\begin{description}
+  \item[Random Forest.] An ensemble of bagged decision trees using \emph{balanced} class weights
+    to mitigate any imbalance between winners. The grid search varies tree depth limits and minimum
+    leaf size. This is a model that has been shown to be effective in tennis forecasting studies and
+    provides a strong, interpretable baseline.
+
+  \item[XGBoost.] An efficient histogram-based gradient-boosted tree classifier, tuned over numbers
+    of boosting rounds, tree depth, learning rate, and row/column subsampling for stochastic
+    regularisation. This is a model that often reaches state-of-the-art accuracy on structured data.
+
+  \item[CatBoost.] A high-performance gradient-boosted decision-tree implementation, tuned over
+    iterations, depth, and learning rate.
+
+  \item[Calibrated linear SVC.] A Linear C-Support Vector classifier (SVC) wrapped in a Calibrated
+    classifier to produce probabilities. A standard scaler is added to preprocessing pipeline to
+    ensure features are on a comparable scale. The Linear SVC uses squared-hinge loss and balanced
+    class weights, and is tuned over the regularisation strength. The Calibrated classifier uses a
+    sigmoid calibration with a 5-fold cross-validation to produce well-calibrated win probabilities.
+
+  \item[Nyström + SGD.] The Nyström kernel approximation maps inputs into a Radial Basis Function
+    (RBF) feature space of finite dimension; a linear Stochastic Gradient Descent (SGD) classifier
+    with balanced class weights is then trained on these features. It also uses a standard scaler
+    in the pipeline. The feature mappping is tuned over kernel scale (gamma) and feature-map
+    dimension (number of components), whereas the classifier is tuned over the loss function
+    (hinge or log loss) and regularisation strength.
+
+  \item[Multi-Layer Perceptron.] A fully connected Multi-Layer Perceptron (MLP) classifier using
+    standard scaling preprocessing and the Adam stochastic gradient-based optimiser, with
+    \emph{early stopping} on a held-out fraction of each training fold to limit overfitting. It is
+    tuned over the hidden-layer depth and size, choice of activation function (ReLU, hyperbolic
+    tangent, and logistic), batch size, and regularisation strength.
+
+\end{description}
+
+\subsection{Model evaluation}
+
+All models were assessed on the held-out test subset that played no role in model training or
+hyperparameter selection. Since the dataset is balanced by construction (for each match, the winner
+is randomly assigned as player1 or player2), \textbf{accuracy} (the fraction of matches classified
+correctly) is a good metric to assess model performance. Standard metrics such as precision, recall,
+and the F1 score are also computed, which help confirm the balance of the dataset. The ROC--AUC is
+a measure of the model's ability to rank the matches correctly, and is computed as the area under
+the Receiver Operating Characteristic (ROC) curve. Probabilistic scores complement these point
+predictions: the \textbf{logarithmic loss} (log-loss), measuring the negative log-likelihood of the
+observed labels under the predicted class probabilities, and the \textbf{Brier score}, the mean
+squared error between the binary outcome and the predicted probability. Together, log-loss and the
+Brier score judge calibration and sharpness of predicted probabilities, which matters when
+interpreting forecasts as win chances rather than only as discrete picks. Results are discussed in
+Section~\ref{chap:results}.
+
+\subsection{Implementation details}
+
+The processing of the original CSV files into the final match-level dataset with the calculation of
+all features discussed in Section~\ref{sec:feature-engineering} was implemented in Python (code is
+available
+online\footnote{\url{https://github.com/scarvalhojr/tennispredictor/tree/main/code/databuilder}}).
+Elo-style ratings are implemented directly within the codebase. Glicko-2 ratings delegate the
+update mathematics and period processing to a third-party
+library\footnote{\url{https://pypi.org/project/glicko2-py/}}. Supervised machine learning models
+were implemented using the scikit-learn framework\footnote{\url{https://scikit-learn.org/}},
+including the built-in implementations of Random Forest, calibrated linear SVC, Nyström kernel
+approximation, Stochastic Gradient Descent, and Multi-Layer Perceptron, alongside third-party
+libraries for the XGBoost\footnote{\url{https://xgboost.ai/}} and
+CatBoost\footnote{\url{https://catboost.ai/}} implementations. Full details of the implementations
+together with the hyperparameters are available in a Jupyter
+Notebook\footnote{\url{https://github.com/scarvalhojr/tennispredictor/blob/main/notebook/tennispredictor.ipynb}}.
+
+
+\pagebreak
+
+
+\section{Results}\label{chap:results}
+
+[You may structure this as you wish, but let the reader know everything you know about the results, regardless of whether you consider the outcome good or bad.
+
+Discuss the results, rather than simply presenting them to your reader and letting them do the work.
+
+Be inquisitive when analysing your results. For example, if you are getting accuracies in the high 90s there is probably either an extreme imbalance in the data set or a data leak. Always investigate and at least discuss but, if there is time, it is best to redesign and redo your experiments.
+
+Discuss the implication of the results in the application domain]
+
+
+\pagebreak
+
+
+\section{Conclusion}
+
+[Structure as you wish but make sure that a it includes a synthesis of the results, a high-level discussion of their implications in the application domain, any particularly interesting low-level details of the results and, finally, some words on future work i.e. how you or someone else might build on the project.]
+
+
+\pagebreak
+
+
+\printbibliography[heading=bibintoc]
+
+
+\pagebreak
+
+
+\appendix
 
 \section{Examples of figure, table and equation}
 

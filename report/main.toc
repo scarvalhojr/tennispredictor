@@ -10,14 +10,14 @@
 \contentsline {section}{\numberline {3}Methodology}{12}{section.3}%
 \contentsline {subsection}{\numberline {3.1}Data collection}{12}{subsection.3.1}%
 \contentsline {subsection}{\numberline {3.2}Feature engineering}{12}{subsection.3.2}%
-\contentsline {paragraph}{Elo-type ratings.}{14}{subsection.3.2}%
-\contentsline {paragraph}{Glicko-type ratings.}{14}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}Data analysis}{14}{subsection.3.3}%
-\contentsline {subsection}{\numberline {3.4}Data preparation}{15}{subsection.3.4}%
-\contentsline {subsection}{\numberline {3.5}Supervised Machine Learning Models}{15}{subsection.3.5}%
-\contentsline {subsection}{\numberline {3.6}Implementation details}{16}{subsection.3.6}%
-\contentsline {section}{\numberline {4}Results}{17}{section.4}%
-\contentsline {section}{\numberline {5}Conclusion}{18}{section.5}%
-\contentsline {section}{References}{19}{section.5}%
-\contentsline {section}{\numberline {A}Final dataset features}{20}{appendix.A}%
-\contentsline {section}{\numberline {B}Examples of figure, table and equation}{21}{appendix.B}%
+\contentsline {paragraph}{Elo-type ratings.}{13}{subsection.3.2}%
+\contentsline {paragraph}{Glicko-type ratings.}{14}{equation.2}%
+\contentsline {subsection}{\numberline {3.3}Data analysis}{15}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Data preparation}{16}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Supervised Machine Learning Models}{17}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Model evaluation}{18}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}Implementation details}{18}{subsection.3.7}%
+\contentsline {section}{\numberline {4}Results}{20}{section.4}%
+\contentsline {section}{\numberline {5}Conclusion}{21}{section.5}%
+\contentsline {section}{References}{22}{section.5}%
+\contentsline {section}{\numberline {A}Examples of figure, table and equation}{23}{appendix.A}%
