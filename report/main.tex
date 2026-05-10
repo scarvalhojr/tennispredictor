@@ -665,7 +665,7 @@ All models were assessed on the held-out test subset that played no role in mode
 hyperparameter selection. Since the dataset is balanced by construction (for each match, the winner
 is randomly assigned as player1 or player2), \textbf{accuracy} (the fraction of matches classified
 correctly) is a good metric to assess model performance. Standard metrics such as precision, recall,
-and the F1 score are also computed, which help confirm the balance of the dataset. The ROC--AUC is
+and the F1 score are also computed using a weighted average over classes. The ROC--AUC is
 a measure of the model's ability to rank the matches correctly, and is computed as the area under
 the Receiver Operating Characteristic (ROC) curve. Probabilistic scores complement these point
 predictions: the \textbf{logarithmic loss} (log-loss), measuring the negative log-likelihood of the
@@ -698,13 +698,137 @@ Notebook\footnote{\url{https://github.com/scarvalhojr/tennispredictor/blob/main/
 
 \section{Results}\label{chap:results}
 
-[You may structure this as you wish, but let the reader know everything you know about the results, regardless of whether you consider the outcome good or bad.
+\subsection{Model performance on the held-out test subset}
 
-Discuss the results, rather than simply presenting them to your reader and letting them do the work.
+All supervised models were initially compared on the same held-out test subset of $37{,}875$
+matches (20\% of the dataset). Table~\ref{tab:model-performance-test} lists the results with the
+several performance metrics: absolute accuracy; weighted precision, recall and F1 score; ROC--AUC;
+Brier score; and log-loss.
 
-Be inquisitive when analysing your results. For example, if you are getting accuracies in the high 90s there is probably either an extreme imbalance in the data set or a data leak. Always investigate and at least discuss but, if there is time, it is best to redesign and redo your experiments.
+\begin{table}[ht!]
+  \centering
+  \small
+  \caption{Classification and probability scores on the held-out test subset ordered by accuracy.}
+  \vspace{0.75em}
+  \begin{tabular}{lccccccc}
+    \toprule
+    \textbf{Model} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1} & \textbf{ROC--AUC} & \textbf{Brier} & \textbf{Log-loss} \\
+    \midrule
+    CatBoost      & 0.6997 & 0.6998 & 0.6997 & 0.6997 & 0.7723 & 0.1941 & 0.5687 \\
+    XGBoost       & 0.6985 & 0.6985 & 0.6985 & 0.6985 & 0.7716 & 0.1944 & 0.5696 \\
+    MLP           & 0.6953 & 0.6954 & 0.6953 & 0.6953 & 0.7677 & 0.1959 & 0.5728 \\
+    Random Forest & 0.6951 & 0.6951 & 0.6951 & 0.6951 & 0.7674 & 0.1961 & 0.5738 \\
+    Nyström + SGD & 0.6923 & 0.6927 & 0.6923 & 0.6923 & 0.7620 & 0.1984 & 0.5799 \\
+    Linear SVC    & 0.6898 & 0.6898 & 0.6898 & 0.6898 & 0.7628 & 0.1979 & 0.5783 \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:model-performance-test}
+\end{table}
 
-Discuss the implication of the results in the application domain]
+Differences between models are only modest: gradient-boosted trees (CatBoost, then XGBoost) achieve
+the highest accuracy and best probability scores (lowest Brier and log-loss). The other models trail
+slightly but remain competitive, suggesting that much of the predictive signal is already captured
+by the engineered tabular features rather than by a particular inductive bias alone. All models
+report close to 70\% accuracy, in line with previous results in the literature, in particular those
+reported by \textcite{williams_2021}. The fact that all models perform similarly also replicates
+the findings in the literature, including those of \textcite{williams_2021} and \textcite{yue_2022}.
+
+\subsection{Retraining models on the full dataset}
+
+In order to do a more comprehensive and fair comparison of the classification performance of all
+models, they were retrained on the full dataset of 189{,}373 matches using a 10-fold
+cross-validation approach using the best hyperparameters found in the previous section.
+Figure~\ref{fig:model-performance-full} shows the accuracy of predictions by year from all models
+on the full dataset. The chart shows that all models perform fairly similarly, and that the
+accuracy of predictions varies between years in a way that resembles how the predicitive power of
+the ATP ranking, Elo and Glicko ratings were shown to vary over time in
+Figure~\ref{fig:favourite-wins-per-year}. This also suggests that datasets restricted to specific
+years can produce vastly different results, which may explain some of the better results found
+in the literature.
+
+\begin{figure}[ht!]
+  \centering
+  \caption{Overall accuracy of predictions by year from all models after re-training on the full
+    dataset with a 10-fold cross-validation.}
+  \vspace{1em}
+  \includegraphics[width=\linewidth]{images/accuracy_all_models_over_years.png}
+  \label{fig:model-performance-full}
+\end{figure}
+
+Some of the better results reported in the literature were not only restricted to certain years but
+also focused on Grand Slam matches only, so it is interesting to see how the accuracy of the models
+reported here perform on this type of tournament.
+Figure~\ref{fig:catboost-accuracy-per-tournament-level} shows the accuracy by year of the best
+performing model (CatBoost) for different tournament levels (all other models produced similar
+results). It is clear that the accuracy is higher on Grand Slam matches but also on matches from the
+Davis Cup. The higher accuracy on Grand Slam matches may be explained by the fact that these matches
+are played in best-of-5 sets format on the ATP Tour, which is less likely to result in the favourite
+player losing the match (the underdog needs to win three sets, rather than just two, agains the
+better player). This might also explain the higher accuracy on matches from the Davis Cup, which
+had, up to 2018, a large number of matches played in best-of-five format. In the case of Davis Cup,
+another factor might explain the higher accuracy: the fact that many matches in the earlier rounds
+of the competition tend to involve lower-ranked players from less established nations in the tennis
+circuit, so often the favourite player is far superior to the opponent. The wild variation in
+accuracy for the ATP Finals is probably due to the fact that this tournament only has a few matches
+per year, so the accuracy is more susceptible to random variation.
+
+\begin{figure}[ht!]
+  \centering
+  \caption{Accuracy of CatBoost predictions by year and tournament level.}
+  \vspace{1em}
+  \includegraphics[width=\linewidth]{images/catboost_accuracy_per_tournament_level.png}
+  \label{fig:catboost-accuracy-per-tournament-level}
+\end{figure}
+
+Figure~\ref{fig:catboost-accuracy-per-match-format} confirms the generally higher accuracy of
+predictions on matches played in best-of-5 versus best-of-3 format (results from the CatBoos model,
+but all other models produced similar results). Finally,
+Figure~\ref{fig:catboost-accuracy-per-surface} (again, results from the CatBoost model)
+does not show any significant difference in accuracy between different court surfaces, other than
+perhaps a slightly wider range of accuracy on grass courts that may be explained by the fact that
+there are far fewer tournaments on grass courts than on other surfaces.
+
+\begin{figure}[ht!]
+  \centering
+  \caption{Accuracy of CatBoost predictions by year and match format.}
+  \vspace{1em}
+  \includegraphics[width=\linewidth]{images/catboost_accuracy_per_match_format.png}
+  \label{fig:catboost-accuracy-per-match-format}
+\end{figure}
+
+\begin{figure}[ht!]
+  \centering
+  \caption{Accuracy of CatBoost predictions by year and court surface.}
+  \vspace{1em}
+  \includegraphics[width=\linewidth]{images/catboost_accuracy_per_surface.png}
+  \label{fig:catboost-accuracy-per-surface}
+\end{figure}
+
+\subsection{Shapley values}
+
+In order to understand the contribution of each feature to the predictions of the models, Shapley
+values were calculated for each model --- these values are a measure of the contribution of each
+feature to the prediction of a model as well as the directionality of the impact they have on the
+predictions. They are calculated by subtracting the average prediction of the model from the
+prediction of the model when the feature is set to its mean value.
+Figure~\ref{fig:shapley-values-catboost} shows the top features in the dataset and how they impact
+the output of the CatBoost model. Features are ordered by the absolute value of their Shapley
+values so the most important features appear at the top. It is interesting to see that the 16 Elo
+and Glicko ratings from both players (32 features in total) appear among the most important
+features, and most have higher impact than the ATP ranking positions. The ATP ranking points as well
+as head-to-head tallies do not appear in the plot so they are considered less important by the
+model. Other important features are the number of matches played and win rates (overall and
+surface-specific, career and last year results). Somewhat surprisingly, features with the players'
+age and height appear quite prominently in the plot.
+
+\begin{figure}[ht!]
+  \centering
+  \caption{A beeswarm plot showing how the top features in a dataset impact the CatBoost model
+    output.}
+  \vspace{1em}
+  \includegraphics[width=\linewidth]{images/shapley_values_catboost.png}
+  \label{fig:shapley-values-catboost}
+\end{figure}
 
 
 \pagebreak
