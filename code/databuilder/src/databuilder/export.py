@@ -88,6 +88,17 @@ def export_matches(dataset: TennisDataset, path: Path) -> None:
         "player2_wglicko",
         "player2_surface_glicko",
         "player2_surface_wglicko",
+
+        # TODO: add deltas for Elo and Glicko ratings
+        # "elo_delta",
+        # "welo_delta",
+        # "surface_elo_delta",
+        # "surface_welo_delta",
+        # "glicko_delta",
+        # "wglicko_delta",
+        # "surface_glicko_delta",
+        # "surface_wglicko_delta",
+
         "score",
         "winner",
     )
@@ -209,6 +220,25 @@ def _match_data(
         "player2_wglicko": stats.get_wglicko(player2_id),
         "player2_surface_glicko": stats.get_surface_glicko(player2_id, surface),
         "player2_surface_wglicko": stats.get_surface_wglicko(player2_id, surface),
+
+        # TODO: add deltas for Elo and Glicko ratings
+        # "elo_delta": stats.get_elo_delta(player1_id, player2_id),
+        # "welo_delta": stats.get_welo_delta(player1_id, player2_id),
+        # "surface_elo_delta": stats.get_surface_elo_delta(
+        #     player1_id, player2_id, surface
+        # ),
+        # "surface_welo_delta": stats.get_surface_welo_delta(
+        #     player1_id, player2_id, surface
+        # ),
+        # "glicko_delta": stats.get_glicko_delta(player1_id, player2_id),
+        # "wglicko_delta": stats.get_wglicko_delta(player1_id, player2_id),
+        # "surface_glicko_delta": stats.get_surface_glicko_delta(
+        #     player1_id, player2_id, surface
+        # ),
+        # "surface_wglicko_delta": stats.get_surface_wglicko_delta(
+        #     player1_id, player2_id, surface
+        # ),
+
         "score": match.score,
         "winner": match.winner,
     }
