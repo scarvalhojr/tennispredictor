@@ -20,7 +20,7 @@
 \contentsline {section}{\numberline {4}Results}{20}{section.4}%
 \contentsline {subsection}{\numberline {4.1}Model performance on the held-out test subset}{20}{subsection.4.1}%
 \contentsline {subsection}{\numberline {4.2}Retraining models on the full dataset}{20}{subsection.4.2}%
-\contentsline {subsection}{\numberline {4.3}Shapley values}{21}{subsection.4.3}%
-\contentsline {section}{\numberline {5}Conclusion}{23}{section.5}%
-\contentsline {section}{References}{24}{section.5}%
-\contentsline {section}{\numberline {A}Examples of figure, table and equation}{26}{appendix.A}%
+\contentsline {subsection}{\numberline {4.3}Shapley values}{22}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Conclusion}{24}{section.5}%
+\contentsline {section}{References}{25}{section.5}%
+\contentsline {section}{\numberline {A}Examples of figure, table and equation}{27}{appendix.A}%
