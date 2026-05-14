@@ -610,7 +610,9 @@ the dataset, followed by the weighted Elo (68.12\%), weighted Glicko (67.73\%), 
 (67.48\%). The ATP ranking correctly predicts the winner in 66.24\% of matches in which the rankings
 of both players are known, which is approximately the same as reported by \textcite{williams_2021}.
 The surface-specific Elo and Glicko ratings are marginally less accurate than their overall
-counterparts but are still better than the ATP ranking.
+counterparts but are still better than the ATP ranking. Appendix~\ref{sec:ranking-comparisons} shows
+an interesting comparison of the top 30 players according to the official ATP ranking at the end of
+the 2024 season, together with alternative rankings produced by the Elo and Glicko models.
 
 \begin{figure}[ht!]
   \centering
@@ -1033,5 +1035,108 @@ number of matches, which would required a more complex preprocessing pipeline to
 
 \appendix
 
+\section{Ranking comparisons}
+\label{sec:ranking-comparisons}
+
+Table~\ref{tab:ranking-comparison-overall-and-hard} and
+Table~\ref{tab:ranking-comparison-clay-and-grass} show the top 30 players according to the official
+ATP ranking at the end of the 2024 season, with their rankings according to alternative scores
+produced by several Elo and Glicko models (weighted and non-weighted, surface-specific and
+overall).
+
+\begin{table}[ht!]
+  \centering
+  \small
+  \caption{ATP ranking with the top 30 players at the end of the 2024 season, compared with
+    alternative rankings produced by Elo, Glicko, weighted Elo (wElo) and weighted Glico (wGlicko)
+    models; for each model, two rankings are shown: one updated with all matches in the dataset
+    (no prefix), and one updated with hard court matches only (prefixed with ``h-'').}
+  \vspace{1em}
+  \begin{tabular}{rlrrrrrrrr}
+    \toprule
+    \textbf{ATP} & \textbf{Name} & \textbf{Elo} & \textbf{wElo} & \textbf{Glicko} & \textbf{wGlicko} & \textbf{h-Elo} & \textbf{h-wElo} & \textbf{h-Glicko} & \textbf{h-wGlicko} \\
+    \midrule
+     1 & Jannik Sinner & 1 & 1 & 2 & 1 & 1 & 1 & 2 & 2 \\
+     2 & Alexander Zverev & 5 & 5 & 6 & 5 & 6 & 6 & 6 & 7 \\
+     3 & Carlos Alcaraz & 3 & 4 & 3 & 3 & 3 & 4 & 3 & 4 \\
+     4 & Taylor Fritz & 7 & 7 & 10 & 9 & 7 & 7 & 13 & 13 \\
+     5 & Daniil Medvedev & 6 & 6 & 5 & 4 & 5 & 5 & 4 & 5 \\
+     6 & Casper Ruud & 28 & 21 & 23 & 21 & 37 & 31 & 42 & 40 \\
+     7 & Novak Djokovic & 2 & 2 & 1 & 2 & 2 & 2 & 1 & 1 \\
+     8 & Andrey Rublev & 22 & 17 & 16 & 14 & 18 & 12 & 12 & 14 \\
+     9 & Alex De Minaur & 11 & 10 & 9 & 8 & 12 & 11 & 9 & 12 \\
+    10 & Grigor Dimitrov & 9 & 8 & 8 & 7 & 8 & 9 & 8 & 11 \\
+    11 & Stefanos Tsitsipas & 16 & 12 & 13 & 11 & 23 & 17 & 21 & 21 \\
+    12 & Tommy Paul & 15 & 15 & 18 & 16 & 20 & 20 & 24 & 24 \\
+    13 & Holger Rune & 13 & 16 & 15 & 17 & 13 & 18 & 18 & 22 \\
+    14 & Ugo Humbert & 21 & 23 & 26 & 23 & 11 & 13 & 19 & 17 \\
+    15 & Jack Draper & 8 & 9 & 12 & 10 & 9 & 8 & 10 & 10 \\
+    16 & Hubert Hurkacz & 12 & 13 & 14 & 13 & 17 & 16 & 17 & 19 \\
+    17 & Lorenzo Musetti & 29 & 30 & 27 & 29 & 69 & 78 & 90 & 101 \\
+    18 & Frances Tiafoe & 35 & 35 & 34 & 38 & 31 & 34 & 40 & 47 \\
+    19 & Karen Khachanov & 18 & 22 & 22 & 22 & 19 & 22 & 25 & 28 \\
+    20 & Arthur Fils & 25 & 33 & 39 & 40 & 27 & 35 & 44 & 43 \\
+    21 & Ben Shelton & 27 & 26 & 30 & 30 & 24 & 23 & 27 & 32 \\
+    22 & Sebastian Korda & 17 & 20 & 19 & 18 & 21 & 21 & 22 & 25 \\
+    23 & Alejandro Tabilo & 59 & 61 & 65 & 61 & 100 & 102 & 145 & 132 \\
+    24 & Alexei Popyrin & 30 & 41 & 49 & 52 & 28 & 41 & 55 & 56 \\
+    25 & Tomas Machac & 10 & 19 & 20 & 20 & 10 & 19 & 23 & 27 \\
+    26 & Jordan Thompson & 33 & 40 & 41 & 46 & 26 & 33 & 41 & 45 \\
+    27 & Sebastian Baez & 79 & 71 & 79 & 87 & 159 & 200 & 230 & 1852 \\
+    28 & Jiri Lehecka & 31 & 29 & 31 & 35 & 38 & 40 & 45 & 54 \\
+    29 & Felix Auger Aliassime & 34 & 25 & 28 & 27 & 43 & 29 & 36 & 36 \\
+    30 & Francisco Cerundolo & 42 & 42 & 47 & 50 & 55 & 64 & 89 & 99 \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:ranking-comparison-overall-and-hard}
+\end{table}
+
+\begin{table}[ht!]
+  \centering
+  \small
+  \caption{ATP ranking with the top 30 players at the end of the 2024 season, compared with
+    alternative rankings produced by surface-specific Elo, Glicko, weighted Elo (wElo) and weighted
+    Glico (wGlicko) models; for each model, two rankings are shown: one updated with clay court
+    matches only (prefixed with ``c-''), and one updated with grass court matches only (prefixed with
+    ``g-'').}
+  \vspace{1em}
+  \begin{tabular}{rlrrrrrrrr}
+    \toprule
+    \textbf{ATP} & \textbf{Name} & \textbf{c-Elo} & \textbf{c-wElo} & \textbf{c-Glicko} & \textbf{c-wGlicko} & \textbf{g-Elo} & \textbf{g-wElo} & \textbf{g-Glicko} & \textbf{g-wGlicko} \\
+    \midrule
+     1 & Jannik Sinner & 7 & 8 & 9 & 7 & 4 & 6 & 5 & 5 \\
+     2 & Alexander Zverev & 6 & 5 & 6 & 5 & 13 & 14 & 13 & 14 \\
+     3 & Carlos Alcaraz & 3 & 3 & 2 & 2 & 2 & 3 & 3 & 3 \\
+     4 & Taylor Fritz & 18 & 15 & 20 & 16 & 14 & 17 & 37 & 37 \\
+     5 & Daniil Medvedev & 12 & 18 & 15 & 12 & 7 & 8 & 16 & 19 \\
+     6 & Casper Ruud & 8 & 7 & 10 & 8 & 1984 & 1974 & 1979 & 1976 \\
+     7 & Novak Djokovic & 2 & 2 & 1 & 1 & 1 & 1 & 1 & 1 \\
+     8 & Andrey Rublev & 13 & 10 & 11 & 9 & 20 & 20 & 15 & 18 \\
+     9 & Alex De Minaur & 19 & 27 & 33 & 32 & 11 & 11 & 23 & 25 \\
+    10 & Grigor Dimitrov & 22 & 16 & 18 & 15 & 19 & 16 & 30 & 27 \\
+    11 & Stefanos Tsitsipas & 4 & 4 & 4 & 3 & 39 & 39 & 44 & 44 \\
+    12 & Tommy Paul & 27 & 34 & 52 & 40 & 8 & 9 & 24 & 23 \\
+    13 & Holger Rune & 11 & 13 & 16 & 19 & 22 & 33 & 54 & 64 \\
+    14 & Ugo Humbert & 178 & 203 & 214 & 194 & 37 & 34 & 57 & 54 \\
+    15 & Jack Draper & 82 & 80 & 65 & 58 & 16 & 18 & 8 & 7 \\
+    16 & Hubert Hurkacz & 16 & 24 & 27 & 27 & 9 & 10 & 9 & 11 \\
+    17 & Lorenzo Musetti & 9 & 12 & 13 & 10 & 12 & 19 & 51 & 57 \\
+    18 & Frances Tiafoe & 72 & 71 & 93 & 96 & 23 & 27 & 49 & 45 \\
+    19 & Karen Khachanov & 15 & 14 & 17 & 18 & 43 & 30 & 33 & 35 \\
+    20 & Arthur Fils & 39 & 48 & 43 & 45 & 62 & 76 & 1990 & 1986 \\
+    21 & Ben Shelton & 99 & 112 & 124 & 138 & 91 & 106 & 2108 & 2091 \\
+    22 & Sebastian Korda & 50 & 56 & 59 & 60 & 21 & 21 & 11 & 13 \\
+    23 & Alejandro Tabilo & 62 & 53 & 68 & 54 & 32 & 44 & 36 & 47 \\
+    24 & Alexei Popyrin & 75 & 90 & 73 & 92 & 1983 & 2039 & 2058 & 2031 \\
+    25 & Tomas Machac & 28 & 46 & 28 & 36 & 1998 & 2030 & 2107 & 2110 \\
+    26 & Jordan Thompson & 277 & 2079 & 266 & 1979 & 35 & 38 & 52 & 49 \\
+    27 & Sebastian Baez & 24 & 20 & 23 & 22 & 2105 & 2099 & 2047 & 2045 \\
+    28 & Jiri Lehecka & 36 & 57 & 39 & 49 & 34 & 50 & 22 & 30 \\
+    29 & Felix Auger Aliassime & 20 & 25 & 29 & 26 & 40 & 24 & 14 & 16 \\
+    30 & Francisco Cerundolo & 21 & 21 & 24 & 23 & 83 & 92 & 80 & 1945 \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:ranking-comparison-clay-and-grass}
+\end{table}
 
 \end{document}

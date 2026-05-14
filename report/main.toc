@@ -13,10 +13,10 @@
 \contentsline {paragraph}{Elo-type ratings.}{12}{subsection.3.2}%
 \contentsline {paragraph}{Glicko-type ratings.}{13}{equation.2}%
 \contentsline {subsection}{\numberline {3.3}Data analysis}{14}{subsection.3.3}%
-\contentsline {subsection}{\numberline {3.4}Data preparation}{15}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.4}Data preparation}{16}{subsection.3.4}%
 \contentsline {subsection}{\numberline {3.5}Supervised Machine Learning Models}{16}{subsection.3.5}%
 \contentsline {subsection}{\numberline {3.6}Model evaluation}{17}{subsection.3.6}%
-\contentsline {subsection}{\numberline {3.7}Implementation details}{17}{subsection.3.7}%
+\contentsline {subsection}{\numberline {3.7}Implementation details}{18}{subsection.3.7}%
 \contentsline {section}{\numberline {4}Results}{19}{section.4}%
 \contentsline {subsection}{\numberline {4.1}Model performance on the held-out test subset}{19}{subsection.4.1}%
 \contentsline {subsection}{\numberline {4.2}Retraining models on the full dataset}{19}{subsection.4.2}%
@@ -24,3 +24,4 @@
 \contentsline {section}{\numberline {5}Conclusion}{23}{section.5}%
 \contentsline {subsection}{\numberline {5.1}Future work}{25}{subsection.5.1}%
 \contentsline {section}{References}{27}{subsection.5.1}%
+\contentsline {section}{\numberline {A}Ranking comparisons}{28}{appendix.A}%
