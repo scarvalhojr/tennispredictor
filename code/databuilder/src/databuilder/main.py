@@ -10,7 +10,7 @@ from logging import DEBUG, INFO, basicConfig, error
 from pathlib import Path
 
 from .data import DataInconsistencyError, TennisDataset
-from .export import export_matches
+from .export import export_matches, export_ranking_comparison
 from .load import load_matches, load_players, load_rankings
 
 
@@ -39,6 +39,12 @@ def parse_args():
         default=Path.cwd() / "atp_matches.csv",
         help="Final dataset file (default: atp_matches.csv)",
     )
+    parser.add_argument(
+        "-r",
+        "--ranking-file",
+        type=Path,
+        help="Ranking comparison output file",
+    )
 
     return parser.parse_args()
 
@@ -62,7 +68,9 @@ def main() -> None:
         load_players(csv_dir, dataset)
         load_rankings(csv_dir, dataset)
         load_matches(csv_dir, dataset)
-        export_matches(dataset, dataset_file)
+        stats = export_matches(dataset, dataset_file)
+        if args.ranking_file:
+            export_ranking_comparison(dataset, stats, args.ranking_file)
     except DataInconsistencyError as exc:
         error(exc)
         raise SystemExit(1) from exc

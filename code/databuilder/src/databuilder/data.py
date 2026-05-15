@@ -75,6 +75,17 @@ class TennisDataset:
     def count_tournaments(self) -> int:
         return len(self.tournaments)
 
+    def get_ranked_players(
+        self, ranking_date: date, max_lookback: int = 7
+    ) -> list[tuple[Ranking, Player]]:
+        ranked_players = []
+        for player in self.players.values():
+            rank = player.get_ranking(ranking_date, max_lookback)
+            if rank is not None:
+                ranked_players.append((rank, player))
+
+        return ranked_players
+
 
 class Player:
     """A tennis player."""
@@ -105,7 +116,7 @@ class Player:
     def full_name(self) -> str:
         return " ".join((self.first_name or "", self.last_name or "")).strip()
 
-    def age_at(self, a_date: date) -> float:
+    def age_at(self, a_date: date) -> float | None:
         if self.birth_date is None:
             return None
         return round((a_date - self.birth_date).days / 365.25, 2)
@@ -180,10 +191,10 @@ class Player:
         else:
             ranking.update_if_missing(position, points, self)
 
-    def get_ranking(self, ranking_date: date) -> Ranking | None:
-        """Get the ranking for a given date, searching back up to 15 days."""
+    def get_ranking(self, ranking_date: date, max_lookback: int = 15) -> Ranking | None:
+        """Get the ranking for a given date, searching back up to 15 days by default."""
 
-        for _ in range(15):
+        for _ in range(max_lookback):
             ranking = self.ranking_history.get(ranking_date)
             if ranking is not None:
                 return ranking

@@ -22,7 +22,7 @@ class Stats:
 
     def __init__(self):
         self.total_matches = 0
-        self._match_date: date | None = None
+        self._last_match_date: date | None = None
         self._match_surface: Surface | None = None
         self._player_ranking_stats: dict[int, PlayerRankingStats] = {}
         self._player_overall_stats: dict[int, PlayerMatchStats] = {}
@@ -48,10 +48,10 @@ class Stats:
 
     def set_current_match(self, match_date: date, surface: Surface | None = None):
         assert match_date is not None and (
-            self._match_date is None or match_date >= self._match_date
+            self._last_match_date is None or match_date >= self._last_match_date
         )
 
-        self._match_date = match_date
+        self._last_match_date = match_date
         self._match_surface = surface
 
         self.glicko.set_current_date(match_date)
@@ -59,6 +59,9 @@ class Stats:
         if surface is not None:
             self.surface_glicko[surface].set_current_date(match_date)
             self.surface_wglicko[surface].set_current_date(match_date)
+
+    def get_last_match_date(self) -> date | None:
+        return self._last_match_date
 
     def add_match(self, tournament: Tournament, match: Match):
         self.total_matches += 1
@@ -100,15 +103,15 @@ class Stats:
             self.surface_wglicko[surface].add_result(winner_id, loser_id, games_ratio)
 
     def get_player_ranking_stats(self, player: Player) -> PlayerRankingStats:
-        assert self._match_date is not None
+        assert self._last_match_date is not None
 
         if player.player_id not in self._player_ranking_stats:
             self._player_ranking_stats[player.player_id] = PlayerRankingStats(
-                player.get_ranking(self._match_date)
+                player.get_ranking(self._last_match_date)
             )
         else:
             self._player_ranking_stats[player.player_id].update(
-                player.get_ranking(self._match_date)
+                player.get_ranking(self._last_match_date)
             )
 
         return self._player_ranking_stats[player.player_id]
@@ -117,7 +120,7 @@ class Stats:
         if player_id not in self._player_overall_stats:
             self._player_overall_stats[player_id] = PlayerMatchStats()
         else:
-            self._player_overall_stats[player_id].update(self._match_date)
+            self._player_overall_stats[player_id].update(self._last_match_date)
 
         return self._player_overall_stats[player_id]
 
@@ -130,7 +133,9 @@ class Stats:
         if (player_id, surface) not in self._player_surface_stats:
             self._player_surface_stats[(player_id, surface)] = PlayerMatchStats()
         else:
-            self._player_surface_stats[(player_id, surface)].update(self._match_date)
+            self._player_surface_stats[(player_id, surface)].update(
+                self._last_match_date
+            )
 
         return self._player_surface_stats[(player_id, surface)]
 
@@ -145,89 +150,69 @@ class Stats:
 
         return self.head2head_surface_wins[(player1_id, player2_id, surface)]
 
-    def get_elo(self, player_id: int) -> float:
-        return self.elo.get_rating(player_id)
-
-    def get_elo_delta(self, player1_id: int, player2_id: int) -> float:
-        return self.elo.get_rating(player1_id) - self.elo.get_rating(player2_id)
-
-    def get_welo(self, player_id: int) -> float:
-        return self.welo.get_rating(player_id)
-
-    def get_welo_delta(self, player1_id: int, player2_id: int) -> float:
-        return self.welo.get_rating(player1_id) - self.welo.get_rating(player2_id)
-
-    def get_surface_elo(self, player_id: int, surface: Surface | None) -> float:
+    def get_elo(self, player_id: int, surface: Surface | None = None) -> float:
         if surface is None:
-            return self.get_elo(player_id)
+            return self.elo.get_rating(player_id)
 
         return self.surface_elo[surface].get_rating(player_id)
 
-    def get_surface_elo_delta(
-        self, player1_id: int, player2_id: int, surface: Surface | None
+    def get_elo_delta(
+        self, player1_id: int, player2_id: int, surface: Surface | None = None
     ) -> float:
         if surface is None:
-            return self.get_elo_delta(player1_id, player2_id)
+            return self.elo.get_rating(player1_id) - self.elo.get_rating(player2_id)
 
         return self.surface_elo[surface].get_rating(player1_id) - self.surface_elo[
             surface
         ].get_rating(player2_id)
 
-    def get_surface_welo(self, player_id: int, surface: Surface | None) -> float:
+    def get_welo(self, player_id: int, surface: Surface | None = None) -> float:
         if surface is None:
-            return self.get_welo(player_id)
+            return self.welo.get_rating(player_id)
 
         return self.surface_welo[surface].get_rating(player_id)
 
-    def get_surface_welo_delta(
-        self, player1_id: int, player2_id: int, surface: Surface | None
+    def get_welo_delta(
+        self, player1_id: int, player2_id: int, surface: Surface | None = None
     ) -> float:
         if surface is None:
-            return self.get_welo_delta(player1_id, player2_id)
+            return self.welo.get_rating(player1_id) - self.welo.get_rating(player2_id)
 
         return self.surface_welo[surface].get_rating(player1_id) - self.surface_welo[
             surface
         ].get_rating(player2_id)
 
-    def get_glicko(self, player_id: int) -> float:
-        return self.glicko.get_rating(player_id)
-
-    def get_glicko_delta(self, player1_id: int, player2_id: int) -> float:
-        return self.glicko.get_rating(player1_id) - self.glicko.get_rating(player2_id)
-
-    def get_wglicko(self, player_id: int) -> float:
-        return self.wglicko.get_rating(player_id)
-
-    def get_wglicko_delta(self, player1_id: int, player2_id: int) -> float:
-        return self.wglicko.get_rating(player1_id) - self.wglicko.get_rating(player2_id)
-
-    def get_surface_glicko(self, player_id: int, surface: Surface | None) -> float:
+    def get_glicko(self, player_id: int, surface: Surface | None = None) -> float:
         if surface is None:
-            return self.get_glicko(player_id)
+            return self.glicko.get_rating(player_id)
 
         return self.surface_glicko[surface].get_rating(player_id)
 
-    def get_surface_glicko_delta(
-        self, player1_id: int, player2_id: int, surface: Surface | None
+    def get_glicko_delta(
+        self, player1_id: int, player2_id: int, surface: Surface | None = None
     ) -> float:
         if surface is None:
-            return self.get_glicko_delta(player1_id, player2_id)
+            return self.glicko.get_rating(player1_id) - self.glicko.get_rating(
+                player2_id
+            )
 
         return self.surface_glicko[surface].get_rating(
             player1_id
         ) - self.surface_glicko[surface].get_rating(player2_id)
 
-    def get_surface_wglicko(self, player_id: int, surface: Surface | None) -> float:
+    def get_wglicko(self, player_id: int, surface: Surface | None = None) -> float:
         if surface is None:
-            return self.get_wglicko(player_id)
+            return self.wglicko.get_rating(player_id)
 
         return self.surface_wglicko[surface].get_rating(player_id)
 
-    def get_surface_wglicko_delta(
-        self, player1_id: int, player2_id: int, surface: Surface | None
+    def get_wglicko_delta(
+        self, player1_id: int, player2_id: int, surface: Surface | None = None
     ) -> float:
         if surface is None:
-            return self.get_wglicko_delta(player1_id, player2_id)
+            return self.wglicko.get_rating(player1_id) - self.wglicko.get_rating(
+                player2_id
+            )
 
         return self.surface_wglicko[surface].get_rating(
             player1_id
