@@ -44,11 +44,12 @@ Signed\hspace{1em}\raisebox{-2ex}{\includegraphics[width=0.2\linewidth]{sig.png}
 (Sergio de Carvalho, D24130831)
 
 
-% \pagebreak
+\pagebreak
 
 
-% \section*{Dedication}
+\section*{Dedication}
 
+To my wife, Sarah, and my children, Hugo and Oliver, for your love and infinite support.
 
 
 \pagebreak
@@ -59,15 +60,16 @@ Signed\hspace{1em}\raisebox{-2ex}{\includegraphics[width=0.2\linewidth]{sig.png}
 This project aims to predict winners of professional tennis matches using only pre-match tabular
 data. Historical tournament, match, ranking and player information from an open-source repository
 were consolidated into a large dataset of matches spanning 55 years of the ATP Tour, Davis Cup, and
-the 2024 Olympic singles tournament, enriched with several features computed under a strict
-chronological order, including alternative player ratings based on Elo and Glicko systems to capture
+the 2024 Olympic singles tournament, and then enriched with several features computed under a strict
+chronological order, including alternative player ratings based on Elo and Glicko models to capture
 player strengths and recent form. The dataset was used to train six machine learning classifiers
-(Random Forest, XGBoost, CatBoost, linear SVM, Nyström + SGD, and a Multi-Layer Perceptron), which
-were then compared using standard performance metrics. The strongest models achieve about 70\%
+(Random Forest, XGBoost, CatBoost, linear C-Support Vector Classifier, Nyström + Stochastic Gradient
+Descent, and a Multi-Layer Perceptron), which
+were then compared using standard performance metrics. The strongest models achieve around 70\%
 accuracy and competitive probability scores, aligned with prior work. Shapley values confirm the
-importance of the dynamic ratings and workload-related features over official ATP ranking positions.
-An analysis of the results shows how the accuracy can vary significantly over the years, and also
-based on tournament level and match format.
+significance of the dynamic ratings and player-related features over official ATP ranking positions.
+An analysis of the results shows how accuracy can vary significantly across years, tournament levels,
+and match formats.
 
 
 
@@ -82,19 +84,28 @@ based on tournament level and match format.
 
 \section*{Acronyms and Abbreviations}
 \begin{tabular}{@{}l@{\hspace{2em}}l}
+\textbf{Adam} & Adaptive Moment Estimation algorithm to update network weights \\
 \textbf{ANP} & Analytic Network Process \\
 \textbf{ATP} & Association of Tennis Professionals \\
+\textbf{C-SVC} & C-Support Vector Classifier \\
+\textbf{CatBoost} & an implementation of gradient boosting on decision trees. \\
+\textbf{CSV} & Comma-Separated Values format for tabular data \\
 \textbf{DT} & Decision Tree \\
 \textbf{EDA} & Exploratory Data Analysis \\
+\textbf{F1} & F1 Score, a metric that balances precision and recall \\
 \textbf{GBM} & Gradient Boosting Machine \\
 \textbf{LASSO} & Least Absolute Shrinkage and Selection Operator \\
 \textbf{LGBM} & Light Gradient Boosting Machine \\
 \textbf{ML} & Machine Learning \\
 \textbf{MLP} & Multi-Layer Perceptron \\
+\textbf{RBF} & Radial Basis Function \\
+\textbf{ReLU} & Rectified Linear Unit, a non-linear activation function \\
 \textbf{RF} & Random Forest \\
+\textbf{ROC-AUC} & Receiver Operating Characteristic - Area Under the Curve \\
+\textbf{SGD} & Stochastic Gradient Descent \\
 \textbf{SVM} & Support Vector Machine \\
 \textbf{WTA} & Women's Tennis Association \\
-\textbf{XGBoost} & eXtreme Gradient Boosting \\
+\textbf{XGBoost} & eXtreme Gradient Boosting algorithm \\
 \end{tabular}
 
 
@@ -137,8 +148,8 @@ Predicting the outcomes of sporting events has been a long-standing problem in t
 analytics, and can have significant implications for the development of training methods and
 strategies to improve the performance of professional athletes. It
 is also important for broadcasters and the media in general as it helps them to transform a passive
-viewing experience into an interactive, high-stakes narrative that drives viewer retention and fan
-engagement. Finally, it can be argued that predicting sporting events can help develop valuable
+viewing experience into an interactive, high-stakes narrative that drives fan engagement and viewer
+retention. Finally, it can be argued that predicting sporting events can help develop valuable
 models and gain insights that could be useful in diverse areas of human activity, from financial
 markets, to politics and international conflicts \parencite{gu_2019}.
 
@@ -166,12 +177,13 @@ Section~\ref{sec:literature-review} surveys paired-comparison models and rating 
 Elo and Glicko), reviews machine-learning studies applied to tennis forecasting, and closes with a
 review of identified research needs. Section~\ref{sec:methodology} describes the methodology and
 the end-to-end execution of the work: from the collection of match, ranking and player data to the
-construction of the dataset and feature engineering, data exploration, and the construction of
+construction of the dataset and feature engineering, data exploration, and the implementation of
 several machine learning models. The section concludes with a discussion on how the models were
 evaluated and some implementation details for reproducibility. Section~\ref{sec:results} presents
-the results, initially comparing the models on the held-out test partition, and then a more
+the results, initially comparing the models on a held-out test partition, and then a more
 comprehensive analysis of accuracy trends by season, tournament level, match format, and court
-surface. The section concludes with a discussion of the most important features and their impact on
+surface. The section concludes with a discussion of the most important features in the dataset and
+their impact on
 the models. Section~\ref{sec:conclusion} synthesises the empirical findings and discusses the
 results in the context of the literature, outlining some directions for future work.
 
@@ -216,8 +228,8 @@ forecasting capabilities.
 (a popular model for handling paired comparisons) that utilised players' past match results using an
 exponential decay function to account for players' recent form (i.e. giving more importance to
 recent results than older ones). Their model also accounted for the score of the matches. For
-instance, a player who wins a match with a score of 6-0 6-0 is rewarded more than a player who wins
-with a score of 7-6 7-6 (presumably, a much tighter match). They also note that tennis is played on
+instance, a player who wins a match with a score of 6--0 6--0 is rewarded more than a player who wins
+with a score of 7--6 7--6 (presumably, a much tighter match). They also note that tennis is played on
 different surfaces (e.g. clay, grass, and hard courts) that can significantly change the performance
 of players, thus they also made further use of weighting techniques so that matches played on
 surfaces other than that of the tournament being considered are given less importance. They showed
@@ -228,21 +240,21 @@ simple betting strategy.
 Expanding on this relational logic, \textcite{knottenbelt_2012} proposed a common-opponent
 stochastic model that relied on the transitive nature of tennis, predicting match outcomes by
 calculating the difference in service points won against opponents that both players had previously
-faced. They argued that the intuition behind this approach is that tennis is a transitive sport to
-a certain extent (i.e. if player A is better than player B and player B is better than player C,
+faced. They argued that the intuition behind this approach is that tennis, to a certain extent, is
+a transitive sport (i.e. if player A is better than player B and player B is better than player C,
 then, usually, player A is better than player C). However, as many avid tennis fans will attest,
 this is often not the case. Using this approach, they were nevertheless able to generate 3.8\%
-long-term profit against the best odds offered by bookmakers for a set of over 2,000 tennis
-matches from the ATP and WTA tours of 2011.
+long-term profit against the best odds published by bookmakers for a set of over 2,000 tennis
+matches from the ATP and WTA tours in 2011.
 
 \textcite{kovalchik_2016} tested the predictive performance of 11 published forecasting models for
-predicting the outcomes of 2,395 singles matches during the 2014 season. They found that an
+predicting the outcome of 2,395 singles matches during the 2014 season. They found that an
 Elo-based model was the best performing model, achieving an accuracy of up to 70\%, although this
 was still worse than a bookmaker consensus model built by aggregating the odds offered by
 established bookmakers for each match, which achieved an accuracy of 72\%.
 
 Subsequent research heavily explored the Elo rating system. \textcite{williams_2021} compared
-standard Elo, surface-specific Elo ratings, and weighted composites against betting odds,
+standard Elo, surface-specific Elo ratings, and weighted composites,
 demonstrating that Elo-based approaches are effective, offering comparable, and sometimes superior,
 forecasting performance to betting odds on Grand Slam matches between 2018 and 2020.
 \textcite{angelini_2022} introduced the concept of a Weighted Elo (WElo), which incorporates the
@@ -260,7 +272,7 @@ court) on a player's true ability. They applied the model to data from the ATP t
 
 Predictive techniques have transitioned from statistical models to complex machine learning (ML)
 approaches. An early example is \textcite{somboonphokkaphan_2009}, who deployed a Multi-Layer
-Perceptron (MLP) -- a foundational class of fully-connected feedforward artificial neural network --
+Perceptron (MLP)---a foundational class of fully-connected feedforward artificial neural network---
 that incorporated time-series history, environmental data in the form of surface type, and several
 statistical features such as winning percentage of first serves and total points won. They tested
 their model on a set of matches between 2003 and 2008 and reported accuracy rates ranging from
@@ -268,7 +280,7 @@ their model on a set of matches between 2003 and 2008 and reported accuracy rate
 Slam matches only.
 
 Recognising that historical data alone misses intangible factors, \textcite{gu_2019} built an
-Analytic Network Process (ANP) -- an advanced, non-linear decision-making framework -- combining
+Analytic Network Process (ANP)---an advanced, non-linear decision-making framework---combining
 data analysis with expert human judgments, capturing unquantifiable variables such as a player's
 psychology, brainpower, and stamina. They reported that their model achieved an accuracy of up to
 85.1\%; however, once again, this was restricted to a set of only 94 matches from the 2015 US
@@ -292,8 +304,8 @@ and noted that differences in prediction performance among the various ML approa
 results and introduced new variables using the Glicko rating system of \textcite{glickman_1999},
 including surface-specific ratings, which were then used to build several statistical and machine
 learning models (Logistic Regression, Support Vector Machine, Neural Network, and Light Gradient
-Boosting Machine). The models were trained on a dataset of Grand Slam matches between 2000 and 2019,
-and the results showed only marginal differences in performance between the various models, with the
+Boosting Machine). The models were trained on a dataset of Grand Slam matches between 2000 and 2019.
+The results showed only marginal differences in performance between the various models, with the
 best results achieved using surface-specific Glicko ratings, with up to 73.8\% accuracy on the ATP
 matches.
 
@@ -335,7 +347,8 @@ consistent data and feature engineering.
 \label{sec:methodology}
 
 This section describes how the project was carried out end to end: from the collection and curation
-of the raw match and ranking data, to the engineering of predictive features, and the construction
+of the raw player, ranking and match data, to the engineering of predictive features, and the
+construction
 and evaluation of the machine learning models.
 
 \subsection{Data collection}
@@ -346,15 +359,16 @@ Sackmann\footnote{\url{https://github.com/JeffSackmann/tennis_atp}}, which conta
 (CSV) files of ATP players, rankings and match results. This repository was cloned into a separate
 fork\footnote{\url{https://github.com/scarvalhojr/tennis_atp}} so that a small number of
 data-quality issues discovered during experimentation could be corrected in a controlled (and
-documented) manner. Examples of such fixes include removing duplicate ranking rows, excluding
-matches in which the placeholder name ``Bye'' appeared as if it was a player, as well as a few other
+documented) manner. Examples of such fixes include removing duplicate ranking entries, excluding
+matches in which the placeholder name ``Bye'' was used instead of a player name (when a player
+advances directly to the next round of the tournament without playing a match), as well as a few other
 minor inconsistencies in the source files.
 
 The repository presents information in three main families of CSV files:
 \begin{enumerate}[label=(\arabic*)]
   \item \textbf{Player files} supply a unique numeric player identifier (ID) together with the
     player name, playing hand (right, left, ambidextrous, or unknown), date of birth, and height.
-  \item \textbf{Ranking files} contain the official ATP weekly rankings: ranking date, player
+  \item \textbf{Ranking files} contain the official ATP weekly rankings with ranking date, player
     ID, ranking position, and ranking points.
   \item \textbf{Match files} describe individual completed contests: tournament information (name,
     level, starting date, court surface, draw size), player IDs for the winner and loser, match
@@ -363,11 +377,11 @@ The repository presents information in three main families of CSV files:
 
 Match files were combined into a single match-level table. Each row was then linked to the player
 master file on winner and loser IDs so that player attributes could be attached to each match.
-Ranking files were aligned to matches by selecting, for each player, the ranking position and points
+Ranking files were aligned to matches by selecting the ranking position and points, for each player,
 at the tournament start date (or the closest available ranking date). Winner and loser player IDs
 were randomly reassigned as player 1 and player 2, so that the dataset is not biased towards one
-player or the other. A winner column was added to indicate the winner of the match. Walkovers and
-matches in which a player retired were removed.
+player or the other. A winner column was added to indicate the winner of the match (1 or 2).
+Walkovers and retirements were also removed.
 
 \subsection{Feature engineering}
 \label{sec:feature-engineering}
@@ -382,18 +396,19 @@ from matches played later in time or from the fixture being predicted.
 For each side in a match, the following history-based quantities were derived from official ATP
 ranking snapshots and from completed matches strictly before the match under consideration:
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Career-best ranking.} The best (numerically smallest) official singles ranking
-    position the player had attained up to the tournament week.
+  \item \textbf{Career-best ranking.} The best (numerically smallest) official ATP singles ranking
+    position the player attained up to the tournament week.
   \item \textbf{Career match volume and win rate.} Total professional matches played to date and
     the fraction of those matches won.
-  \item \textbf{Recent activity and form.} The number of matches played in approximately the last
+  \item \textbf{Recent activity and form.} The number of matches played in the last
     twelve months and the fraction of those matches won. This ``year'' window is a rolling look-back
-    of 365 days from the tournament date (rather than calendar months).
+    of 365 days from the tournament start date (rather than strictly calendar months).
 \end{itemize}
 
-Because surface strongly conditions playing style and results, parallel counters were maintained for
+Because court
+surface strongly conditions playing style and results, parallel counters were maintained for
 each court type on the ATP tour (hard, clay, grass, and carpet). For every player and surface, the
-same career totals and twelve-month counts and win percentages were tracked using only matches
+same career totals, twelve-month counts and win rates were tracked using only matches
 played on that surface before the current match. Where the surface was unknown or missing,
 surface-specific aggregates were left undefined for that row.
 
@@ -402,7 +417,7 @@ first-named player had beaten the second to that date, in two directed views: ov
 surfaces) and on the current event surface. Symmetric statistics for the opponent were also added.
 
 Alongside the tabular features above, the same chronological scan maintained eight parallel rating
-scores for every player: four derived from Elo-style updates and four from Glicko-style updates.
+scores for every player: four derived from Elo-style models and four from Glicko-style models.
 In each case the variants are (i)~overall versus surface-specific, and (ii)~binary win--loss
 versus \emph{margin-of-victory}-weighted updates. The surface-specific variants are updated only
 from prior matches played on the same surface, whereas the overall variants are updated from all
@@ -421,7 +436,7 @@ by \textcite{kovalchik_2016}:
 \end{equation}
 
 where $N$ is the player's match count prior to the match under consideration. The margin-of-victory
-factor for the weigthed variants is the one proposed by \textcite{angelini_2022}:
+factor for the weighted variants is the one proposed by \textcite{angelini_2022}:
 
 \begin{equation}
   V = \dfrac{G_{\mathrm{win}}}{(G_{\mathrm{win}} + G_{\mathrm{lose}})}
@@ -438,14 +453,15 @@ Glicko ratings use the Glicko-2 variant documented in \textcite{glickman_2022}, 
 \emph{rating periods} of $21$~days and system volatility parameter $\tau = 0.5$. In this system,
 each player has a rating, a rating deviation, and a volatility. The rating deviation measures the
 uncertainty of the player's rating, and is high when a player is not competing frequently. The
-volatility indicates the degree of expected fluctuation in a player's rating --- it is high when a
+volatility indicates the degree of expected fluctuation in a player's rating---it is high when a
 player has erratic performances and low when the player performs at a consistent level. Matches
 within a rating period are treated as having occurred simultaneously. The Glicko-2 system has a
-score factor $S_p$ that can account for the margin-of-victory. However, unlike in the Elo system,
+score factor $S_p$ that can account for the margin of victory. However, unlike in the Elo system,
 $S_p$ is different for each player $p$ and reflects the score from each player's perspective: for
 the player who won the match, $S_{\mathrm{winner}} \in (0.5, 1]$, whereas for the player who lost,
-$S_{\mathrm{loser}} \in [0, 0.5)$ --- $0.5$ denotes a draw, but that is not a valid outcome in
-tennis. In the unweighted variants, $S_{\mathrm{winner}} = 1$ and $S_{\mathrm{loser}} = 0$, whereas
+$S_{\mathrm{loser}} \in [0, 0.5)$ ---a draw is denoted by $0.5$, but that is not a valid outcome in
+tennis. In the unweighted variants, $S_{\mathrm{winner}} = 1$ and $S_{\mathrm{loser}} = 0$ are used,
+whereas
 in the weighted variants they are calculated from the margin-of-victory factor $V$ with the
 following formulas:
 
@@ -459,7 +475,7 @@ following formulas:
   \label{eq:glicko-score-loser}
 \end{equation}
 
-Together, each entrant therefore carries four Elo-based features (\texttt{elo}, \texttt{welo},
+Together, each player therefore carries four Elo-based features (\texttt{elo}, \texttt{welo},
 \texttt{surface\_elo}, \texttt{surface\_welo}) and four Glicko-based features (\texttt{glicko},
 \texttt{wglicko}, \texttt{surface\_glicko}, \texttt{surface\_wglicko}) prior to the match being
 predicted.
@@ -513,13 +529,13 @@ per row.
   \texttt{playerX\_id} &
     Unique player identifier. \\
   \texttt{playerX\_name} &
-    Player full name. \\
+    Player's full name. \\
   \texttt{playerX\_hand} &
     Playing hand (right, left, ambidextrous, or unknown). \\
   \texttt{playerX\_height\_cm} &
-    Height in centimetres when available. \\
+    Player's height in centimetres when available. \\
   \texttt{playerX\_age} &
-    Age in years at the tournament start date. \\
+    Player's age in years at the tournament start date. \\
   \texttt{playerX\_rank} &
     Ranking position on the ranking date aligned to the match. \\
   \texttt{playerX\_points} &
@@ -537,7 +553,7 @@ per row.
   \texttt{playerX\_surface\_career\_matches} &
     Prior matches on the same surface type as the event. \\
   \texttt{playerX\_surface\_career\_win\_rate} &
-    Career win rate on that surface (prior matches only). \\
+    Fraction of matches won on the same surface. \\
   \texttt{playerX\_surface\_year\_matches} &
     Matches on that surface in the 365 days before the match. \\
   \texttt{playerX\_surface\_year\_win\_rate} &
@@ -547,21 +563,21 @@ per row.
   \texttt{playerX\_head2head\_surface\_wins} &
     Prior wins against the opponent on the current match surface. \\
   \texttt{playerX\_elo} &
-    Overall Elo-style rating before the match. \\
+    Overall Elo rating before the match. \\
   \texttt{playerX\_welo} &
-    Margin-of-victory weighted Elo-style rating before the match. \\
+    Margin-of-victory weighted Elo rating before the match. \\
   \texttt{playerX\_surface\_elo} &
-    Surface-specific Elo-style rating before the match. \\
+    Surface-specific Elo rating before the match. \\
   \texttt{playerX\_surface\_welo} &
-    Surface-specific margin-of-victory weighted Elo-style rating before the match. \\
+    Surface-specific margin-of-victory weighted Elo rating before the match. \\
   \texttt{playerX\_glicko} &
-    Glicko-style rating before the match. \\
+    Glicko rating before the match. \\
   \texttt{playerX\_wglicko} &
-    Margin-of-victory weighted Glicko-style rating before the match. \\
+    Margin-of-victory weighted Glicko rating before the match. \\
   \texttt{playerX\_surface\_glicko} &
-    Surface-specific Glicko-style rating before the match. \\
+    Surface-specific Glicko rating before the match. \\
   \texttt{playerX\_surface\_wglicko} &
-    Surface-specific margin-of-victory weighted Glicko-style rating before the match. \\
+    Surface-specific margin-of-victory weighted Glicko rating before the match. \\
 
   \multicolumn{2}{@{}l}{\textit{Outcome}} \\
   \texttt{score} &
@@ -586,8 +602,9 @@ points are missing for all matches before 1990.
 
 \begin{figure}[ht!]
   \centering
-  \caption{Distribution of matches per year by tournament level, along with the percentage of
-    matches in which the ranking positions and ranking points of both players are known.}
+  \caption{Distribution of matches per year by tournament level (on the left y-axis), and the
+    percentage of matches in which the ranking positions and ranking points of both players are
+    known (on the right y-axis).}
   \vspace{1em}
   \includegraphics[width=\linewidth]{images/matches_per_year_by_tournament_level.png}
   \label{fig:match-distribution}
@@ -595,14 +612,14 @@ points are missing for all matches before 1990.
 
 The predictive power of the official ATP ranking is noted throughout the literature and can be
 verified with a simple sanity check: among matches where both players have known rankings,
-define the \emph{favorite} as the player with the better (numerically lower) ranking position; that
+define the player with the better (numerically lower) ranking position as the \emph{favourite}; that
 player's win rate is far above 50\% in every season of the dataset. In fact, the same observation
 applies to the calculated Elo and Glicko ratings (including their weighted and surface-specific
 variants):
-treating the higher-rated player before the match as the favorite also yields win percentages well
+treating the higher-rated player before the match as the favourite also yields win percentages well
 above chance and, hence, these inputs are likely to be powerful candidates for supervised models.
 Figure~\ref{fig:favourite-wins-per-year} shows the yearly share of matches in which the pre-match
-favorite---by ATP ranking, Elo, weighted Elo (wElo), Glicko, or weighted Glicko (wGlicko)---won the
+favourite---by ATP ranking, Elo, weighted Elo (wElo), Glicko, or weighted Glicko (wGlicko)---won the
 contest. All lines sit clearly above 60\% and generally track one another. Surface-specific ratings
 are not shown but their predictive behaviour is similar. Among these rating systems, the overall Elo
 is the most accurate on its own, correctly predicting the favourite to win in 68.31\% of matches in
@@ -616,7 +633,7 @@ the 2024 season, together with alternative rankings produced by the Elo and Glic
 
 \begin{figure}[ht!]
   \centering
-  \caption{Yearly share of matches won by the pre-match favorite by ATP ranking
+  \caption{Yearly share of matches won by the pre-match favourite by ATP ranking
     versus overall Elo, weighted Elo (wElo), overall Glicko, and weighted Glicko (wGlicko).}
   \vspace{1em}
   \includegraphics[width=\linewidth]{images/favourite_wins_per_year.png}
@@ -626,15 +643,16 @@ the 2024 season, together with alternative rankings produced by the Elo and Glic
 \subsection{Data preparation}
 \label{sec:data-preparation}
 
-The dataset required little data preparation. Some fields contained occasional missing values and
+After the dataset was assembled, it required little data preparation. Some fields contained
+occasional missing values and
 these were addressed with straightforward imputation in
 the machine-learning pipelines using median or most frequent values.
 
 For supervised experiments, columns were grouped by role. The \textbf{target} variable was the match
 \texttt{winner} indicator (\texttt{1} or \texttt{2}). \textbf{Metadata} columns---carried for
-traceability but not fed as inputs to the classifiers---comprised of tournament information (ID,
-name, start date), match order within the event, the recorded score string, and both players'
-identifiers and names. \textbf{Categorical} inputs comprised match format (\texttt{best\_of}),
+traceability but not fed as inputs to the classifiers---consist of tournament information (ID,
+name, start date, year), match order within the event, the recorded score string, and both players'
+identifiers and names. \textbf{Categorical} inputs comprise match format (\texttt{best\_of}),
 tournament level, court surface, and each player's dominant hand; every other predictive column was
 treated as \textbf{numeric} (including rankings, rating histories, head-to-head totals, and derived
 counts). Categorical features were encoded using one-hot encoding.
@@ -664,21 +682,22 @@ dataset, non-linear support vector machines became computationally infeasible to
     of boosting rounds, tree depth, learning rate, and row/column subsampling for stochastic
     regularisation. This is a model that often reaches state-of-the-art accuracy on structured data.
 
-  \item[CatBoost.] A high-performance gradient-boosted decision-tree implementation, tuned over
+  \item[CatBoost.] Another high-performance gradient-boosted decision-tree implementation, tuned over
     iterations, depth, and learning rate.
 
   \item[Calibrated linear SVC.] A Linear C-Support Vector classifier (SVC) wrapped in a Calibrated
-    classifier to produce probabilities. A standard scaler is added to preprocessing pipeline to
+    classifier to produce probabilities. A standard scaler is added to the preprocessing pipeline to
     ensure features are on a comparable scale. The Linear SVC uses squared-hinge loss and balanced
     class weights, and is tuned over the regularisation strength. The Calibrated classifier uses a
-    sigmoid calibration with a 5-fold cross-validation to produce well-calibrated win probabilities.
+    sigmoid calibration with a 5-fold cross-validation to produce win probabilities.
 
   \item[Nyström + SGD.] The Nyström kernel approximation maps inputs into a Radial Basis Function
     (RBF) feature space of finite dimension; a linear Stochastic Gradient Descent (SGD) classifier
-    with balanced class weights is then trained on these features. It also uses a standard scaler
-    in the pipeline. The feature mappping is tuned over kernel scale (gamma) and feature-map
-    dimension (number of components), whereas the classifier is tuned over the loss function
-    (hinge or log loss) and regularisation strength.
+    with balanced class weights and a log-loss function
+    is then trained on these features. It also uses a standard scaler
+    in the pipeline. The feature mapping is tuned over kernel scale (gamma) and feature-map
+    dimension (number of components), whereas the classifier is tuned over the
+    regularisation strength.
 
   \item[Multi-Layer Perceptron.] A fully connected Multi-Layer Perceptron (MLP) classifier using
     standard scaling preprocessing and the Adam stochastic gradient-based optimiser, with
@@ -711,7 +730,7 @@ all features discussed in Section~\ref{sec:feature-engineering} was implemented 
 available
 online\footnote{\url{https://github.com/scarvalhojr/tennispredictor/tree/main/code/databuilder}}).
 Elo-style ratings are implemented directly within the codebase. Glicko-2 ratings delegate the
-update mathematics and period processing to a third-party
+update mathematics and period processing to a third-party Python
 library\footnote{\url{https://pypi.org/project/glicko2-py/}}. The resulting dataset is also
 available in compressed format
 online\footnote{\url{https://github.com/scarvalhojr/tennispredictor/blob/main/data/atp_matches.csv.gz}}.
@@ -733,10 +752,10 @@ Notebook\footnote{\url{https://github.com/scarvalhojr/tennispredictor/blob/main/
 \label{sec:results}
 
 This section presents a quantitative analysis of the supervised machine learning models described in
-Section~\ref{sec:supervised-machine-learning-models}. First, a direct model comparison on the
+Section~\ref{sec:supervised-machine-learning-models}. It begins with a direct comparison of the models on the
 held-out test subset from Section~\ref{sec:data-preparation}, using classification and probability
-scores. The models are then retrained on the full datset so as to study their predictive performance
-over the time and across different match contexts, before calculating feature importance for the
+scores. The models are then retrained on the full dataset so as to study their predictive performance
+over time and across different match contexts, before calculating feature importance for the
 strongest model in order to relate predictive gains to specific engineered inputs.
 
 \subsection{Model performance on the held-out test subset}
@@ -773,23 +792,24 @@ slightly but remain competitive, suggesting that much of the predictive signal i
 by the engineered tabular features rather than by a particular inductive bias alone. Despite several
 efforts to tune the hyperparameters of the models, they all seemed to hit a ceiling of accuracy
 around 70\%, which is in line with observations in the literature for similar datasets, in
-particular those reported by \textcite{williams_2021}. The fact that different machine models
+particular those reported by \textcite{williams_2021}. The fact that different machine learning models
 perform similarly was also noted by \textcite{williams_2021} and \textcite{yue_2022}. In general,
-the results are satisfactory given that most of the features are somewhat related to one another ---
-e.g. players with higher ATP rankings tend to have higher Elo and Glicko ratings, higher win rates,
-and so on. The Brier score of all models were below 0.2, and the log-loss was below 0.58, both of
+the results are satisfactory given that most of the features are somewhat related to one
+another---e.g.
+players with higher ATP rankings tend to have higher Elo and Glicko ratings, higher win rates,
+and so on. The Brier scores of all models were below 0.2, and the log-loss was below 0.58, both of
 which can be considered good scores and are comparable with most of the results reported in the
 literature.
 
 \subsection{Retraining models on the full dataset}
 
-In order to do a more comprehensive and fair comparison of the classification performance of all
-models, they were retrained on the full dataset of 189{,}373 matches using a 10-fold
+In order to do a more comprehensive comparison of the classification performance of all
+models, they were retrained on the full dataset of 189{,}373 matches using a 5-fold
 cross-validation approach (with shuffling) using the best hyperparameters found in the previous
 section.
 Figure~\ref{fig:model-performance-full} shows the accuracy of predictions by year from all models
 on the full dataset. The chart shows that all models perform similarly, and that the
-accuracy of predictions varies between years in a way that resembles how the predicitive power of
+accuracy of predictions varies between years in a way that resembles how the predictive power of
 the ATP ranking, Elo and Glicko ratings were shown to vary over time (in
 Figure~\ref{fig:favourite-wins-per-year}). The significant variation in accuracy over time also
 suggests that datasets restricted to specific
@@ -799,19 +819,18 @@ reported in the literature.
 \begin{figure}[ht!]
   \centering
   \caption{Overall accuracy of predictions by year from all models after re-training on the full
-    dataset with a 10-fold cross-validation.}
+    dataset with a 5-fold cross-validation.}
   \vspace{1em}
   \includegraphics[width=\linewidth]{images/accuracy_all_models_over_years.png}
   \label{fig:model-performance-full}
 \end{figure}
 
-Given that many results reported in the literature were restricted Grand Slam matches, it is
-interesting to see how the accuracy of the models
-reported here perform on this type of tournament.
+Given that many results reported in the literature were restricted to Grand Slam matches, it is
+interesting to see how the models reported here perform on this type of tournament.
 Figure~\ref{fig:catboost-accuracy-per-tournament-level} shows the accuracy by year of the best
 performing model (CatBoost) for different tournament levels (all other models produced similar
 results). It is clear that the accuracy is higher on Grand Slam matches and also on Davis Cup
-matches. This may be explained by the fact that, unlike other tournaments on the ATP Tour, all
+matches. This may be explained by the fact that, unlike other tournaments on the ATP Tour,
 all Grand Slam matches and a large proportion of Davis Cup matches prior to 2018 were played in
 best-of-five sets format, which is less likely to result in the favourite player losing the match
 (the underdog needs to win three sets, rather than just two, against the favourite player).
@@ -836,7 +855,7 @@ Figure~\ref{fig:catboost-accuracy-per-surface} (again, results from the CatBoost
 does not show any significant difference in accuracy between matches played on different court
 surfaces, other than
 perhaps a slightly wider range of accuracy on grass courts that can be explained by the fact that
-there are fewer tournaments on grass courts than on other surfaces in the calendar year.
+there are fewer tournaments on grass than on other surfaces in a calendar year.
 
 \begin{figure}[ht!]
   \centering
@@ -856,16 +875,14 @@ there are fewer tournaments on grass courts than on other surfaces in the calend
 
 \subsection{Feature importance}
 
-Shapley
-values were calculated for each model --- these values are a measure of the contribution of each
+Shapley values were calculated for features within each model---these values are a measure of the
+contribution of each
 feature to the prediction of a model as well as the directionality of the impact they have on the
 predictions. They are calculated by subtracting the average prediction of the model from the
 prediction of the model when the feature is set to its mean value.
 Figure~\ref{fig:shapley-values-catboost} shows the top features in the dataset and how they impact
 the output of the CatBoost model. Features are ordered so the most important features appear at the
-top. Colours indicate the feature values (higher values in red, lower values in blue) and the
-direction of the impact they have on the predictions (player 2 winning to the left, player 1 winning
-to the right). It is interesting to see that the 8 Elo and 7 Glicko ratings appear among the most
+top. It is interesting to see that the 8 Elo and 7 Glicko features appear among the most
 important features, and most are considered more important than the ATP ranking positions. The ATP
 ranking points as well as head-to-head tallies do not appear in the plot so they are considered less
 important by the model. Other important features are the number of matches played (overall and
@@ -875,14 +892,17 @@ quite prominently in the plot.
 \begin{figure}[ht!]
   \centering
   \caption{A beeswarm plot showing the most important features in a dataset and their impact on the
-  CatBoost model output, ordered by the feature's Shapley value (most important first).}
+  CatBoost model output, ordered by their Shapley values (most important first). Colours indicate
+  the feature values, with higher values in red and lower values in blue. The direction of the
+  impact they have on the predictions is also indicated, with player 2 winning to the left and
+  player 1 winning to the right.}
   \vspace{1em}
   \includegraphics[width=0.7\linewidth]{images/shapley_values_catboost.png}
   \label{fig:shapley-values-catboost}
 \end{figure}
 
 Figure~\ref{fig:shapley-values-grouped-catboost} shows a different view of the Shapley values,
-grouping simmetrical features from both players (\texttt{player1} and \texttt{player2}) into a
+grouping symmetrical features from both players (\texttt{player1} and \texttt{player2}) into a
 single value (\texttt{playerX}), once again ordered by the group's combined Shapley value, with the
 most important ones appearing at the top. The plot largely confirms the findings of the previous
 plot, although some changes are noticeable; for instance, the players' ages are even higher in the
@@ -937,7 +957,7 @@ inductive biases.
 The work also assembled what is, to our knowledge, the largest consolidated match-level dataset used
 in this strand of research, spanning over 55 years across several tournament levels. That breadth
 matters for interpretation: several higher headline accuracies in the literature may reflect
-evaluation on narrower slices of history and/or on subsets dominated by Grand Slam play, where
+evaluation on narrower slices of history and/or on subsets dominated by Grand Slam matches, where
 best-of-five formats make favourites less vulnerable to single-set volatility than in other
 tournaments. In application terms, the models are therefore best understood as robust baselines for
 structured forecasting on archival statistics, not as substitutes for domain expertise when rare
@@ -951,22 +971,22 @@ some of the missing factors above (such as court surface speed indices, detailed
 travel metadata, injury reports, etc.). Other areas for further improvements include calibrating
 models for different eras (taking into account the variation in the predictive power of certain
 features over time), and exploring different training and evaluation strategies to improve and
-assess the robustness of the model---for instance, by using time-aware training-testing splits with
+assess the robustness of the models---for instance, by using time-aware training-testing splits with
 ``sliding'' or ``expanding'' windows as described in \textcite{buhamra_2025-2}.
 
 Below are some of the more readily available features and data that could be added to the dataset,
 either directly from the same source repository used in this project, derived from it, or from other
 related sources. Some of the features available from the source repository were not included in the
-dataset simply because they were not acurately reported or they were not available for a large
-number of matches, which would required a more complex preprocessing pipeline to handle.
+dataset simply because they were not accurately reported or they were not available for a large
+number of matches, which would require a more complex preprocessing pipeline to handle.
 
 \begin{description}
   \item[Challenger, Futures and Qualifying matches.] In this study, matches from the lower levels
   of the ATP circuit, such as the Future and Challenger events, as well as the matches from the
   qualifying rounds of the main level tournaments, were not included in the dataset even though they
   are available in the source repository. This is because these matches feature much lower-ranked
-  players, which require a more careful preprocessing, particularly to calibrate the alternative
-  Elo and Glicko ratings.
+  players, which require a more careful preprocessing, particularly to calibrate the
+  Elo and Glicko ratings in relation to higher-ranked players.
 
   \item[WTA matches.] A similar repository from the same author exists for the Women's Tennis
   Association (WTA) circuit\footnote{\url{https://github.com/scarvalhojr/tennis_wta}}, which could
@@ -982,7 +1002,7 @@ number of matches, which would required a more complex preprocessing pipeline to
   \item[Tournament round the match was played in.] The tournament round the match was played in is
   also available in the source repository and could play a role in the predictions in several ways,
   reflecting how differently some players sometimes perform in certain rounds of a tournament. For
-  instance, some players may underperform in the first rounds due to lack of rhythm and match
+  instance, players may underperform in the first rounds due to lack of rhythm and match
   fitness. Others may feel the pressure of a final, particularly the first time they reach that
   stage of a tournament.
 
@@ -1009,19 +1029,19 @@ number of matches, which would required a more complex preprocessing pipeline to
   the player's home country and where the tournament is played could help improve the predictions.
 
   \item[Specific court conditions.] While the court surface was used as a feature in the dataset,
-  there can be significant variation in the speed and the ball bounce between courts of different
+  there can be significant variation in the speed and ball bounce between courts of different
   tournaments, which can benefit or hinder certain players. For instance, the clay courts of the
-  tournament in the Madrid Open, which is played at an altitude of 660 meters above sea level, are
+  Madrid Open, which is played at an altitude of 660 metres above sea level, are
   known to be a lot faster than the clay courts of the Munich Open, which is played at a lower
   altitude and often in much colder and wetter conditions. Hard courts also have different
   characteristics, with some being faster or slower than others. Even closing the roof of certain
-  courts (such as the Arthur Ashe Stadium at the US Open) can significantly change how certain
+  courts (such as the Arthur Ashe Stadium at the US Open) can have an impact on how certain
   players perform.
 
   \item[Past performance in the same tournament.] Certain players often perform better (or worse) in
   certain tournaments (sometimes due to some of the reasons listed above). Knowing how a player
-  performed the previous years is often a good indicator of how they will perform the following
-  year.
+  performed in a tournament in previous years is often a good indicator of how they will
+  perform the next time they play that tournament again.
 \end{description}
 
 \pagebreak
@@ -1039,16 +1059,16 @@ number of matches, which would required a more complex preprocessing pipeline to
 \label{sec:ranking-comparisons}
 
 Table~\ref{tab:ranking-comparison-overall-and-hard} and
-Table~\ref{tab:ranking-comparison-clay-and-grass} show the top 30 players according to the official
-ATP ranking at the end of the 2024 season, with their rankings according to alternative scores
-produced by several Elo and Glicko models (weighted and non-weighted, surface-specific and
+Table~\ref{tab:ranking-comparison-clay-and-grass} show the top 30 players by the official
+ATP ranking at the end of the 2024 season, with alternative rankings
+produced by several Elo and Glicko scores (weighted and non-weighted, surface-specific and
 overall).
 
 \begin{table}[ht!]
   \centering
   \small
   \caption{ATP ranking with the top 30 players at the end of the 2024 season, compared with
-    alternative rankings produced by Elo, Glicko, weighted Elo (wElo) and weighted Glico (wGlicko)
+    alternative rankings produced by Elo, Glicko, weighted Elo (wElo) and weighted Glicko (wGlicko)
     models; for each model, two rankings are shown: one updated with all matches in the dataset
     (no prefix), and one updated with hard court matches only (prefixed with ``h-'').}
   \vspace{1em}
@@ -1096,7 +1116,7 @@ overall).
   \small
   \caption{ATP ranking with the top 30 players at the end of the 2024 season, compared with
     alternative rankings produced by surface-specific Elo, Glicko, weighted Elo (wElo) and weighted
-    Glico (wGlicko) models; for each model, two rankings are shown: one updated with clay court
+    Glicko (wGlicko) models; for each model, two rankings are shown: one updated with clay court
     matches only (prefixed with ``c-''), and one updated with grass court matches only (prefixed with
     ``g-'').}
   \vspace{1em}
